@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : order_balance.xml  
+  * @메뉴명 : 온라인 주문 발주 > 담보/잔고현황   
+  * @최초작성일 : 2014/10/28            
+  * @author : 우정아                  
+  * @수정내역 :	
+ -->
+<mapper namespace="balance"> 
+	
+	<select id="getBalanceGridList" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.BalanceVO">
+	
+		<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+	    </if>
+
+			SELECT A.CUST_ID CUST_ID, A.INPUT_SEQ INPUT_SEQ,
+			       A.SALE_DAMBO_AMT SALE_DAMBO_AMT, A.BUY_DAMBO_AMT BUY_DAMBO_AMT,
+			       TO_CHAR(A.END_YMD,'YYYY-MM-DD') END_YMD, TO_CHAR(A.START_YMD,'YYYY-MM-DD') START_YMD, A.BALHANG BALHANG,
+			       A.JIGEUB JIGEUB, A.BILL_NO BILL_NO,
+			       (SELECT CODE1_NM
+			          FROM SALE.SALE0001
+			         WHERE CODE_GB = '0022' AND CODE1 = A.BILL_GB) BILL_GB, A.BIGO BIGO,
+			       A.INPUT_YMD INPUT_YMD, TO_CHAR(A.CHULGO_YMD,'YYYY-MM-DD') CHULGO_YMD, B.CUST_NM CUST_NM
+			  FROM SALE.SALE0404 A, SALE.SALE0003 B
+			 WHERE A.CUST_ID = B.CUST_ID AND A.CUST_ID = #{cust_id}
+			
+			<if test="sidx !=''">
+				ORDER BY ${sidx} ${sord}
+			</if>
+			
+		<if test="page != null">
+			) T0
+		)
+		WHERE PAGE = #{page,jdbcType=INTEGER}
+		</if>
+	  
+	 
+	</select>
+	
+	
+	<select id="getBalanceCount" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.BalanceVO">
+	
+			SELECT COUNT(*) totalCnt
+			  FROM SALE.SALE0404 A, SALE.SALE0003 B
+			 WHERE A.CUST_ID = B.CUST_ID AND A.CUST_ID = #{cust_id}
+	 
+	</select>
+	
+	
+	<select id="getSumBalance" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.BalanceVO">
+		SELECT F.BEFORE_AMT BEFORE_AMT, F.MISU_AMT SALE_AMT,
+		       NVL (F.BEFORE_AMT, 0) + NVL (F.MISU_AMT, 0)
+		       - NVL (F.SU_AMT, 0) CUR_AMT, G.JASU_AMT JASU_AMT, G.TASU_AMT TASU_AMT,
+		       H.SALE_DAMBO_AMT SALE_DAMBO_AMT
+		  FROM SALE.SALE0003 A,
+		       (SELECT   CUST_ID, SUM (BEFORE_AMT) BEFORE_AMT, SUM (MISU_AMT)
+		                                                                     MISU_AMT,
+		                 SUM (SU_AMT) SU_AMT
+		            FROM SALE.SALE0306_V
+		           WHERE CUST_ID = #{cust_id}
+		             AND YMD =
+		                    TO_DATE (TO_CHAR (SYSDATE, 'YYYY/MM') || '/01',
+		                             'YYYY/MM/DD'
+		                            )
+		        GROUP BY CUST_ID) F,
+		       (SELECT   X.CUST_ID,
+		                 SUM (CASE
+		                         WHEN Y.BILL_GB IN
+		                                          ('010', '020', '030', '100', '900')
+		                            THEN AMT
+		                         ELSE 0
+		                      END
+		                     ) JASU_AMT,
+		                 SUM (CASE
+		                         WHEN Y.BILL_GB IN ('025', '035', '040')
+		                            THEN AMT
+		                         ELSE 0
+		                      END
+		                     ) TASU_AMT
+		            FROM SALE.SALE0401_V X, SALE.SALE0402_V Y
+		           WHERE X.CUST_ID = #{cust_id}
+		             AND X.YMD = Y.YMD
+		             AND X.JUNPYO_NO = Y.JUNPYO_NO
+		             AND Y.END_YMD >= SYSDATE
+		        GROUP BY X.CUST_ID) G,
+		       (SELECT   X.CUST_ID, NVL (SUM (X.SALE_DAMBO_AMT), 0) SALE_DAMBO_AMT
+		            FROM SALE.SALE0404 X
+		           WHERE X.CUST_ID = #{cust_id}
+		             AND NVL (X.CHULGO_YMD(+), TO_DATE ('2999/01/01', 'YYYY/MM/DD')) =
+		                                          TO_DATE ('2999/01/01', 'YYYY/MM/DD')
+		        GROUP BY X.CUST_ID) H
+		 WHERE A.CUST_ID = #{cust_id}
+		   AND A.CUST_ID = F.CUST_ID(+)
+		   AND A.CUST_ID = G.CUST_ID(+)
+		   AND A.CUST_ID = H.CUST_ID(+)
+		
+	</select>
+	
+</mapper>
+	

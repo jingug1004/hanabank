@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : mgmt_user.xml     
+  * @메뉴명 : MANAGE > 사용자관리      
+  * @최초작성일 : 2015/01/16            
+  * @author : 김재갑                  
+  * @수정내역 :	
+ -->
+<mapper namespace="mgmt_user"> 
+	
+	<select id="getUserMgmtMain" parameterType="hashmap" resultType="com.hanaph.saleon.mgmt.vo.MgmtUserVO">
+		<![CDATA[
+		SELECT   A.CUST_ID AS EMP_CODE,A.CUST_ID AS COPY_CODE, A.CUST_NM AS EMP_NAME, A.PASSWORD,
+            substr(xmlagg(xmlelement(a,',' || b.role_no)).extract('//text()'), 2) ROLE_NO
+            FROM SALE.SALE0003 A, SALE_ON.PF_USERROLE_DEV B
+           WHERE A.CUST_ID = B.EMP_CODE(+)
+             AND CUST_ID LIKE '11%'
+		     AND A.USE_YN = #{useYn}
+		     AND A.CUST_ID || A.CUST_NM LIKE '%' || #{searchText} || '%'
+		   GROUP BY A.CUST_ID, A.CUST_NM, A.PASSWORD
+		]]>
+		 <if test="sidx != '' and sord != ''">
+		 	ORDER BY ${sidx} ${sord}
+		 </if>
+	</select>
+	
+	<select id="getUserCount" parameterType="hashmap" resultType="int">
+		SELECT COUNT(CUST_ID)FROM SALE.SALE0003 WHERE EMP_CODE = #{empCode}
+	</select>
+	
+	<update id="updateMember" parameterType="com.hanaph.saleon.mgmt.vo.MgmtUserVO">
+		MERGE INTO SALE.SALE0003                           
+		   USING DUAL                  
+		   ON (CUST_ID = #{emp_code})                                  
+		   WHEN MATCHED THEN
+		      UPDATE
+		         SET CUST_NM = #{emp_name}, PASSWORD = #{password}
+		   WHEN NOT MATCHED THEN
+		      INSERT (CUST_ID, CUST_NM, PASSWORD, USE_YN)
+		      VALUES (#{emp_code}, #{emp_name}, #{password}, #{use_yn})
+	</update>
+	
+	<update id="deleteMember" parameterType="com.hanaph.saleon.mgmt.vo.MgmtUserVO">
+		UPDATE SALE.SALE0003 SET USE_YN = #{use_yn} WHERE EMP_CODE = #{emp_code}
+	</update>
+	
+	<select id="getRoleList" parameterType="hashmap" resultType="com.hanaph.saleon.mgmt.vo.MgmtUserVO">
+		SELECT ROLE_NO, ROLE_NAME,
+		       (SELECT DECODE(COUNT(EMP_CODE),0,'N','Y')
+		          FROM SALE_ON.PF_USERROLE_DEV B
+		         WHERE A.ROLE_NO = B.ROLE_NO AND B.EMP_CODE = #{empCode})CHECK_YN
+		  FROM SALE_ON.PF_ROLE A
+		  WHERE ROLE_NO LIKE '%' || #{code} || '%' AND ROLE_NAME LIKE '%' || #{name} || '%'
+		<if test="sidx != '' and sord != ''">
+		 	ORDER BY ${sidx} ${sord}
+		 </if>
+	</select>
+	
+	<select id="getRoleUserCount" parameterType="hashmap" resultType="int">
+		SELECT COUNT(*) FROM SALE_ON.PF_USERROLE_DEV WHERE ROLE_NO = #{roleNo} AND EMP_CODE = #{empCode}
+ 	</select>
+ 	
+ 	<insert id="deleteUserRole" parameterType="com.hanaph.saleon.mgmt.vo.MgmtUserVO"> 
+ 		DELETE FROM SALE_ON.PF_USERROLE_DEV WHERE EMP_CODE = #{emp_code} AND ROLE_NO NOT IN(${role_no})
+ 	</insert>
+ 	
+ 	<insert id="insertUserRole" parameterType="com.hanaph.saleon.mgmt.vo.MgmtUserVO"> 
+ 		INSERT INTO SALE_ON.PF_USERROLE_DEV(ROLE_NO,EMP_CODE)VALUES(#{role_no},#{emp_code})
+ 	</insert>
+	
+</mapper>

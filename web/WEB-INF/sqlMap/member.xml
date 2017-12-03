@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : member.xml    
+  * @메뉴명 : 온라인 주문 login,비밀번호 변경     
+  * @최초작성일 : 2015/01/16            
+  * @author : 김재갑                  
+  * @수정내역 :	
+ -->
+<mapper namespace="member"> 
+	
+	<select id="getLogin" parameterType="hashmap" resultType="com.hanaph.saleon.member.vo.LoginUserVO">
+		SELECT CUST_ID AS EMP_CODE, CUST_NM AS EMP_NAME, '' AS DEPT_CODE,'1' EMP_GB, PASSWORD, USE_YN
+		  FROM SALE.SALE0003
+		 WHERE CUST_ID LIKE '11%' AND CUST_ID = #{empCode} AND PASSWORD = UTL_I18N.STRING_TO_RAW(#{password},'AL32UTF8')
+	</select>
+	
+	<update id="updatePassword" parameterType="hashmap">
+		UPDATE SALE.SALE0003 SET PASSWORD = UTL_I18N.STRING_TO_RAW(#{newPassword},'AL32UTF8') WHERE CUST_ID = #{empCode}
+		   AND CUST_ID LIKE '11%' AND USE_YN = 'Y'
+	</update>
+	
+	<select id="getOracleUserList" resultType="hashmap">
+		SELECT ORAUSER USERNAME, UTL_I18N.RAW_TO_CHAR(ORAUSER_PASS) PASSWORD, USE_YN USEYN FROM TB_ORAUSER_INFO	
+	</select>
+	
+	<select id="getLoginForEmployee" parameterType="hashmap" resultType="com.hanaph.saleon.member.vo.LoginUserVO">
+		SELECT EMP_CODE, SAWON_ID, EMP_NAME, DEPT_CODE, PASSWORD, EMP_GB, PART_GB,
+		       GRADE_NAME, DEPT_NAME, PART_NAME, DEPT_CD,ASSGN_CD,ASSGN_NAME
+		  FROM (SELECT CASE
+		                  WHEN B.INSA_SAWON_ID IS NOT NULL AND A.EMP_NO <![CDATA[ <> ]]> B.INSA_SAWON_ID THEN B.SAWON_ID
+		                  WHEN B.INSA_SAWON_ID IS NOT NULL AND A.EMP_NO = B.INSA_SAWON_ID AND B.SAWON_ID <![CDATA[ <> ]]> B.INSA_SAWON_ID THEN B.SAWON_ID
+		                  ELSE A.EMP_NO
+		               END EMP_CODE,
+		               B.SAWON_ID, B.SAWON_NM EMP_NAME, B.DEPT_CD DEPT_CODE,TC.DEPT_CD,
+		               A.PASS_WORD PASSWORD, B.USER_GRUP EMP_GB, B.PART_GB,
+		               HANAHR.F_GET_GRAD_NM (TC.GRAD_CD) AS GRADE_NAME,
+		               (SELECT C.DEPT_NM
+		                  FROM SALE.SALE0008 C
+		                 WHERE C.DEPT_CD = B.DEPT_CD) DEPT_NAME,
+		               (SELECT D.CODE1_NM
+		                  FROM SALE.SALE0001 D
+		                 WHERE D.CODE1 = B.PART_GB AND D.CODE_GB = '0013') PART_NAME,
+		               DECODE (B.GUBUN, 'N', 'N', 'Y') GUBUN,
+                       DECODE(B.PDA_AUTH,'A','27000',TC.ASSGN_CD ) AS ASSGN_CD,
+                       (select comn_nm from hr_co_common_0 where comn_cd = TC.ASSGN_CD) ASSGN_NAME
+		          FROM HANACOMM.CO_US_MEMBER_0 A, SALE.SALE0007 B, HANAHR.HR_HC_EMPBAS_0 TC
+		         WHERE A.EMP_NO = TC.EMP_NO(+)
+                   AND A.EMP_NO = B.INSA_SAWON_ID(+) 
+	               AND (A.EMP_NO = #{empCode} OR  B.SAWON_ID = #{empCode})
+	               AND A.USE_YN = 'Y'
+	               AND A.PASS_WORD = UTL_I18N.STRING_TO_RAW(#{password},'AL32UTF8'))
+		 WHERE GUBUN = 'Y'
+	     AND ROWNUM = 1
+	</select>
+	
+	<update id="updatePasswordForEmployee" parameterType="hashmap">
+		UPDATE HANACOMM.CO_US_MEMBER_0 
+		SET PASS_WORD = UTL_I18N.STRING_TO_RAW(#{newPassword},'AL32UTF8')
+		WHERE EMP_NO IN (SELECT A.INSA_SAWON_ID
+		         FROM SALE.SALE0007 A,  HANACOMM.CO_US_MEMBER_0 B
+		        WHERE A.GUBUN = 'Y'
+		          AND B.USE_YN = 'Y'
+		          AND A.INSA_SAWON_ID = B.EMP_NO 
+		          AND A.SAWON_ID = #{empCode})
+	</update>
+	
+	<insert id="insertHisPasswordForEmployee" parameterType="hashmap">
+		<selectKey keyProperty="seq" resultType="int" order="BEFORE">
+			SELECT NVL(MAX (SEQ), 0) + 1 AS SEQ
+			    FROM HANACOMM.CO_US_PASSWORD_HISTORY
+			   WHERE EMP_NO = (SELECT A.INSA_SAWON_ID
+		         FROM SALE.SALE0007 A,  HANACOMM.CO_US_MEMBER_0 B
+		        WHERE A.GUBUN = 'Y'
+		          AND B.USE_YN = 'Y'
+		          AND A.INSA_SAWON_ID = B.EMP_NO 
+		          AND A.SAWON_ID = #{empCode})			
+		</selectKey>
+		INSERT INTO HANACOMM.CO_US_PASSWORD_HISTORY
+	            (EMP_NO, 
+	             SEQ, 
+	             PW_EXPIRE_DT, 
+	             PASSWORD, 
+	             FIRST_EMP_NO, 
+	             LAST_EMP_NO, 
+	             LAST_IP
+	            )
+	    SELECT A.INSA_SAWON_ID EMP_NO,
+	    		#{seq} SEQ, 
+	    		TO_CHAR(SYSDATE + 90000, 'YYYYMMDD') PW_EXPIRE_DT, 
+	    		UTL_I18N.STRING_TO_RAW(#{newPassword},'AL32UTF8') PASSWORD, 
+	    		A.INSA_SAWON_ID FIRST_EMP_NO, 
+	    		#{lastEmpNo} LAST_EMP_NO, 
+	            #{lastIp} LAST_IP
+          FROM SALE.SALE0007 A,  HANACOMM.CO_US_MEMBER_0 B
+       	 WHERE A.GUBUN = 'Y'
+           AND B.USE_YN = 'Y'
+           AND A.INSA_SAWON_ID = B.EMP_NO 
+           AND A.SAWON_ID = #{empCode}
+           AND ROWNUM = 1 
+	</insert>
+	
+	<!-- 비밀번호 유효성 검사 프로시저 -->
+	<parameterMap type="hashmap" id="passwordValidate">
+		<parameter property="in_EMP_NO" jdbcType="VARCHAR" javaType="string" mode="IN" />
+		<parameter property="in_PASSWORD" jdbcType="VARCHAR" javaType="string" mode="IN" />
+		<parameter property="out_CODE" jdbcType="INTEGER" javaType="string" mode="OUT" />
+		<parameter property="out_MSG" jdbcType="VARCHAR" javaType="string" mode="OUT" />
+		<parameter property="out_COUNT" jdbcType="INTEGER" javaType="string" mode="OUT" />
+	</parameterMap>
+	<select id="callPasswordValidate" statementType="CALLABLE" parameterMap="passwordValidate">
+		{call HANACOMM.SP_PASSWORD_VALIDATE(?, ?, ?, ?, ?)}
+	</select>
+	
+	<!-- 비밀번호 변경 프로시저 -->
+	<parameterMap type="hashmap" id="passwordAccord">
+		<parameter property="in_EMP_NO" jdbcType="VARCHAR" javaType="string" mode="IN" />
+		<parameter property="in_PASSWORD" jdbcType="VARCHAR" javaType="string" mode="IN" />
+		<parameter property="in_FRAG" jdbcType="VARCHAR" javaType="string" mode="IN" />
+		<parameter property="out_CODE" jdbcType="INTEGER" javaType="string" mode="OUT" />
+		<parameter property="out_MSG" jdbcType="VARCHAR" javaType="string" mode="OUT" />
+		<parameter property="out_COUNT" jdbcType="INTEGER" javaType="string" mode="OUT" />
+	</parameterMap>
+	<select id="callPasswordAccord" statementType="CALLABLE" parameterMap="passwordAccord">
+		{call HANACOMM.SP_PASSWORD_ACCORD(?, ?, ?, ?, ?, ?)}
+	</select>
+	
+</mapper>
+	

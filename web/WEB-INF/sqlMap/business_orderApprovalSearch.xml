@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : business_orderApprovalSearch.xml
+  * @메뉴명 : 주문/승인 조회
+  * @최초작성일 : 2014/12/26
+  * @author : 윤범진          
+  * @수정내역 :
+ -->
+<mapper namespace="orderApprovalSearch"> 
+	
+	<select id="getOrderSearchGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.OrderApprovalSearchVO">
+	<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+    	</if>
+    	<![CDATA[
+    						SELECT A.CUST_ID, 
+							       A.RCUST_ID, 
+							       B.CUST_NM CUST_NM, 
+							       C.CUST_NM RCUST_NM, 
+							       A.GUMAE_NO,
+							       TO_CHAR(A.YMD, 'YYYY-MM-DD') YMD, 
+							       TO_CHAR(A.INPUT_YMD, 'AM HH12:MI:SS') REQ_TIME, 
+							       NVL2(A.GUMAE_GB,'일반매출','        ') AS GUMAE_GB,
+							       CASE WHEN A.RECEIPT_GB = '1' THEN '접수'
+							            WHEN A.RECEIPT_GB = '2' THEN '승인'
+							            WHEN A.RECEIPT_GB = '3' THEN '반려'ELSE '    ' END AS STATUS, 
+							       A.YMDT AS APP_YMD, 
+							       A.GUMAE_NOT AS APP_NO, 
+							       CASE WHEN A.RECEIPT_GB = '1' THEN A.BIGO
+							            WHEN A.RECEIPT_GB = '2' THEN A.RETURN_DESC
+							            WHEN A.RECEIPT_GB = '3' THEN A.RETURN_DESC ELSE '    ' END AS RETURN_DESC, 
+							       A.SLIP_GB,
+							       A.WIBAN_ORDER_REQ_YN,
+							       A.WIBAN_ORDER_CONF_YN
+							  FROM SALE_ON.SALE0203 A, SALE.SALE0003 B, SALE.SALE0003 C
+							 WHERE A.CUST_ID = B.CUST_ID
+							   AND A.RCUST_ID = C.CUST_ID
+							   AND A.YMD BETWEEN #{adt_fr_date,jdbcType=VARCHAR} AND #{adt_to_date,jdbcType=VARCHAR}
+							   AND A.RECEIPT_GB  IN (${as_receipt_gb})
+							   AND A.WIBAN_ORDER_REQ_YN like #{as_wiban_order_req_yn,jdbcType=VARCHAR}
+							   AND A.WIBAN_ORDER_CONF_YN like #{as_wiban_order_conf_yn,jdbcType=VARCHAR}
+							   AND A.CUST_ID LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+							   AND A.SLIP_GB = #{as_slip_gb,jdbcType=VARCHAR}
+							   AND NVL(A.LIMIT_YN,'N') IN (${as_limit_yn})
+							   AND B.SAWON_ID IN (SELECT SAWON_ID 
+								 						   FROM SALE.SALE0007 
+														  WHERE (CASE WHEN 'P' = F_TEAMWON_GB('${as_emp_cd}') THEN SIL_SAWON_ID ELSE DEPT_CD END) 
+															  = (CASE WHEN 'P' = F_TEAMWON_GB('${as_emp_cd}') THEN #{as_emp_cd,jdbcType=VARCHAR}
+															    	  WHEN 'D' = F_TEAMWON_GB('${as_emp_cd}') THEN #{as_dept_cd,jdbcType=VARCHAR} ELSE DEPT_CD END ))
+							   ]]>
+					<if test="sidx != ''">
+						ORDER BY ${sidx} ${sord}
+					</if>
+		
+				<if test="page != null">
+					) T0
+				)
+				WHERE PAGE = #{page,jdbcType=INTEGER}
+				</if>
+	</select>
+	
+	<select id="getOrderSearchGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.OrderApprovalSearchVO">
+	<![CDATA[
+		SELECT COUNT(*) total_cnt
+		  FROM (SELECT A.CUST_ID, 
+				       A.RCUST_ID, 
+				       B.CUST_NM CUST_NM, 
+				       C.CUST_NM RCUST_NM, 
+				       A.GUMAE_NO,
+				       A.YMD, 
+				       A.INPUT_YMD REQ_TIME, 
+				       NVL2(A.GUMAE_GB,'일반매출','        ') AS GUMAE_GB,
+				       CASE WHEN A.RECEIPT_GB = '1' THEN '접수'
+				            WHEN A.RECEIPT_GB = '2' THEN '승인'
+				            WHEN A.RECEIPT_GB = '3' THEN '반려'ELSE '    ' END AS STATUS, 
+				       A.YMDT AS APP_YMD, 
+				       A.GUMAE_NOT AS APP_NO, 
+				       CASE WHEN A.RECEIPT_GB = '1' THEN A.BIGO
+				            WHEN A.RECEIPT_GB = '2' THEN A.RETURN_DESC
+				            WHEN A.RECEIPT_GB = '3' THEN A.RETURN_DESC ELSE '    ' END AS RETURN_DESC, 
+				       A.SLIP_GB,
+				       A.WIBAN_ORDER_REQ_YN,
+				       A.WIBAN_ORDER_CONF_YN
+				  FROM SALE_ON.SALE0203 A, SALE.SALE0003 B, SALE.SALE0003 C
+				 WHERE A.CUST_ID = B.CUST_ID
+				   AND A.RCUST_ID = C.CUST_ID
+				   AND A.YMD BETWEEN #{adt_fr_date,jdbcType=VARCHAR} AND #{adt_to_date,jdbcType=VARCHAR}
+				   AND A.RECEIPT_GB  IN (${as_receipt_gb})
+				   AND A.WIBAN_ORDER_REQ_YN like #{as_wiban_order_req_yn,jdbcType=VARCHAR}
+				   AND A.WIBAN_ORDER_CONF_YN like #{as_wiban_order_conf_yn,jdbcType=VARCHAR}
+				   AND A.CUST_ID LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+				   AND A.SLIP_GB = #{as_slip_gb,jdbcType=VARCHAR}
+				   AND NVL(A.LIMIT_YN,'N') IN (${as_limit_yn})
+				   AND B.SAWON_ID IN (SELECT SAWON_ID 
+			 						   FROM SALE.SALE0007 
+									  WHERE (CASE WHEN 'P' = F_TEAMWON_GB('${as_emp_cd}') THEN SIL_SAWON_ID ELSE DEPT_CD END) 
+										  = (CASE WHEN 'P' = F_TEAMWON_GB('${as_emp_cd}') THEN #{as_emp_cd,jdbcType=VARCHAR}
+										     	  WHEN 'D' = F_TEAMWON_GB('${as_emp_cd}') THEN #{as_dept_cd,jdbcType=VARCHAR} ELSE DEPT_CD END ))
+				)
+	]]>
+	</select>
+	
+	<select id="getApprovalSearchGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.OrderApprovalSearchVO">
+	<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+    	</if>
+    	<![CDATA[
+    						SELECT A.CUST_ID, 
+							       A.RCUST_ID, 
+							       B.CUST_NM    CUST_NM, 
+							       C.CUST_NM    RCUST_NM, 
+							       A.GUMAE_NO,
+							       TO_CHAR(A.YMD, 'YYYY-MM-DD') YMD, 
+							       A.INPUT_YMD REQ_TIME, 
+							       NVL2(A.GUMAE_GB,'일반매출','        ') AS GUMAE_GB,
+							       CASE WHEN A.RECEIPT_GB = '1' THEN '접수'
+							            WHEN A.RECEIPT_GB = '2' THEN '승인'
+							            WHEN A.RECEIPT_GB = '3' THEN '반려' ELSE '    ' END AS STATUS, 
+							       TO_CHAR(A.YMDT, 'YYYY-MM-DD') APP_YMD, 
+							       A.GUMAE_NOT AS APP_NO, 
+							       A.BIGO,
+							       A.RETURN_DESC, 
+							       A.SLIP_GB,
+							       A.ASAWON_ID ASAWON_ID,
+							       D.SAWON_NM ASAWON_NM,
+							       TO_CHAR(TO_DATE(A.ADATE, 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD HH24:MI:SS') APP_TIME
+							  FROM SALE_ON.SALE0203 A, SALE.SALE0003 B, SALE.SALE0003 C, SALE.SALE0007 D
+							 WHERE A.CUST_ID = B.CUST_ID
+							   AND A.RCUST_ID = C.CUST_ID
+							   AND A.ASAWON_ID = D.SAWON_ID(+)
+							   AND A.YMDT BETWEEN #{adt_fr_date,jdbcType=VARCHAR} AND #{adt_to_date,jdbcType=VARCHAR}
+							   AND A.RECEIPT_GB IN (${as_receipt_gb2})
+							   AND A.CUST_ID LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+							   AND A.SLIP_GB = #{as_slip_gb,jdbcType=VARCHAR}
+							   AND NVL(A.LIMIT_YN,'N') IN (${as_limit_yn})
+		]]>
+					<if test="sidx != ''">
+						ORDER BY ${sidx} ${sord}
+					</if>
+		
+				<if test="page != null">
+					) T0
+				)
+				WHERE PAGE = #{page,jdbcType=INTEGER}
+				</if>
+	</select>
+	
+	<select id="getApprovalSearchGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.OrderApprovalSearchVO">
+	<![CDATA[
+		SELECT COUNT(*) total_cnt
+		  FROM (
+		  		SELECT A.CUST_ID, 
+				       A.RCUST_ID, 
+				       B.CUST_NM    CUST_NM, 
+				       C.CUST_NM    RCUST_NM, 
+				       A.GUMAE_NO,
+				       A.YMD, 
+				       A.INPUT_YMD REQ_TIME, 
+				       NVL2(A.GUMAE_GB,'일반매출','        ') AS GUMAE_GB,
+				       CASE WHEN A.RECEIPT_GB = '1' THEN '접수'
+				            WHEN A.RECEIPT_GB = '2' THEN '승인'
+				            WHEN A.RECEIPT_GB = '3' THEN '반려' ELSE '    ' END AS STATUS, 
+				       A.YMDT AS APP_YMD, 
+				       A.GUMAE_NOT AS APP_NO, 
+				       A.BIGO,
+				       A.RETURN_DESC, 
+				       A.SLIP_GB,
+				       A.ASAWON_ID ASAWON_ID,
+				       D.SAWON_NM ASAWON_NM,
+				       A.ADATE APP_TIME
+				  FROM SALE_ON.SALE0203 A, SALE.SALE0003 B, SALE.SALE0003 C, SALE.SALE0007 D
+				 WHERE A.CUST_ID = B.CUST_ID
+				   AND A.RCUST_ID = C.CUST_ID
+				   AND A.ASAWON_ID = D.SAWON_ID(+)
+				   AND A.YMDT BETWEEN #{adt_fr_date,jdbcType=VARCHAR} AND #{adt_to_date,jdbcType=VARCHAR}
+				   AND A.RECEIPT_GB IN (${as_receipt_gb2})
+				   AND A.CUST_ID LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+				   AND A.SLIP_GB = #{as_slip_gb,jdbcType=VARCHAR}
+				   AND NVL(A.LIMIT_YN,'N') IN (${as_limit_yn})
+			   )
+	]]>
+	</select>
+	
+	<select id="getOrderApprovalDetailGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.OrderApprovalSearchVO">
+	<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+    	</if>
+    						SELECT   A.GUMAE_NO     GUMAE_NO,
+							         A.ITEM_ID      ITEM_ID,
+							         B.ITEM_NM      ITEM_NM,
+									 A.REQ_QTY      REQ_QTY,
+									 A.QTY          QTY,   
+							         A.DANGA        DANGA,   
+							         A.AMT          AMT,   
+							         A.VAT          VAT,
+							         A.AMT + A.VAT  TOT_AMT,   
+							         A.RATE         RATE,   
+							         A.DC_DANGA     DC_DANGA,
+							         A.DC_AMT       DC_AMT,
+							         A.DC_QTY       DC_QTY,   
+							         B.STANDARD     STANDARD,
+							         B.UNIT         UNIT,
+							         NVL2(B.COLOR,'R','B')        COLOR
+							    FROM SALE_ON.SALE0204 A, 
+							         SALE.SALE0004 B
+							   WHERE A.ITEM_ID     = B.ITEM_ID
+							     AND A.GUMAE_NO    = #{gumae_no,jdbcType=VARCHAR}
+							     AND A.YMD         = #{ymd,jdbcType=VARCHAR}
+					<if test="sidx != ''">
+						ORDER BY ${sidx} ${sord}
+					</if>
+		
+				<if test="page != null">
+					) T0
+				)
+				WHERE PAGE = #{page,jdbcType=INTEGER}
+				</if>
+	</select>
+	
+	<select id="getOrderApprovalDetailGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.OrderApprovalSearchVO">
+	<![CDATA[
+		SELECT COUNT(*) total_cnt, SUM(AMT) total_amt, SUM(VAT) total_vat, SUM(TOT_AMT) total_tot_amt, SUM(DC_AMT) total_dc_amt
+		  FROM (
+		  		SELECT   A.GUMAE_NO     GUMAE_NO,
+				         A.ITEM_ID      ITEM_ID,
+				         B.ITEM_NM      ITEM_NM,
+				         A.QTY          QTY,   
+				         A.DANGA        DANGA,   
+				         A.AMT          AMT,   
+				         A.VAT          VAT,
+				         A.AMT + A.VAT  TOT_AMT,   
+				         A.RATE         RATE,   
+				         A.DC_DANGA     DC_DANGA,
+				         A.DC_AMT       DC_AMT,
+				         A.DC_QTY       DC_QTY,   
+				         B.STANDARD     STANDARD,
+				         B.UNIT         UNIT,
+				         NVL2(B.COLOR,'R','B')        COLOR
+				    FROM SALE_ON.SALE0204 A, 
+				         SALE.SALE0004 B
+				   WHERE A.ITEM_ID     = B.ITEM_ID
+				     AND A.GUMAE_NO    = #{gumae_no,jdbcType=VARCHAR}
+				     AND A.YMD         = #{ymd,jdbcType=VARCHAR}
+			   )
+	]]>
+	</select>
+	
+</mapper>
+	

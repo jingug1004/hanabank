@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : order_company.xml
+  * @메뉴명 : 온라인 주문 발주 > 회사정보   
+  * @최초작성일 : 2014/10/28            
+  * @author : 우정아                  
+  * @수정내역 :	
+ -->
+<mapper namespace="company"> 
+	
+	<select id="getCompanyInfo" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.CompanyVO">
+	
+
+		SELECT A.CUST_ID, A.CUST_NM, A.CUST_NM1, A.VOU_NO, A.PRESIDENT, A.BUPIN_NO,
+		       A.UPTAE, A.JONGMOK, A.ZIP, A.ADDR1 || ' ' || A.ADDR2 ADDR, A.TEL, A.HP,
+		       A.FAX, A.EMAIL, B.VIRTUAL_NO
+		  FROM SALE.SALE0003 A, SALE.SALE0003VN B
+		 WHERE A.CUST_ID = #{cust_id} AND A.CUST_ID = B.CUST_ID(+)
+	 
+	</select>
+	
+	<update id="updateCompany" parameterType="com.hanaph.saleon.order.vo.CompanyVO">
+		
+		UPDATE SALE.SALE0003
+		   SET TEL = #{tel, jdbcType=VARCHAR},
+		       HP = #{hp, jdbcType=VARCHAR},
+		       FAX = #{fax, jdbcType=VARCHAR},
+		       EMAIL = #{email, jdbcType=VARCHAR}
+		 WHERE CUST_ID = #{cust_id}
+		 
+	</update>
+
+</mapper>
+	

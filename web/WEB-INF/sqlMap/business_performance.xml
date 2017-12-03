@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : business_performance.xml
+  * @메뉴명 : 실적현황_batch
+  * @최초작성일 : 2014/10/31
+  * @author : 윤범진          
+  * @수정내역 :
+ -->
+<mapper namespace="performance"> 
+	
+	<select id="getPerformanceForPartGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.PerformanceVO">
+	
+		<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+    	</if>
+		<![CDATA[
+						  SELECT MAX (rpt_gb) AS rpt_gb, part_cd, MAX (date_time) AS datef,
+						         MAX (date_time) AS datet, SUM (siljukyul_in) AS siljukyul_in,
+						         SUM (siljukyul_out) AS siljukyul_out,
+						         SUM (siljukyul_in_su) AS siljukyul_in_su,
+						         SUM (siljukyul_out_su) AS siljukyul_out_su,
+						         SUM (siljukyul_byung) AS siljukyul_byung,
+						         SUM (siljukyul_byung_su) AS siljukyul_byung_su,
+						         MAX (rorder) AS rorder, '' AS col1,
+						         (SELECT NVL (code2_nm, '미지정') FROM sale.sale0001 WHERE code_gb = '0013' AND part_cd = code1) AS col2, '' AS col3,
+						         (SELECT NVL (code1_nm, '미지정') FROM sale.sale0001 WHERE code_gb = '0013' AND part_cd = code1) AS col4,
+						         SUM (sale_amt) AS sale_amt,
+						         SUM (sale_amt_siljuk_in) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in,
+						         SUM (sale_amt_siljuk_in_local) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_local,
+						         SUM (sale_amt_siljuk_in_01) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_01,
+						         SUM (sale_amt_siljuk_in_02) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_02,
+						         SUM (sale_amt_siljuk_in_03) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_03,
+						         SUM (sale_amt_siljuk_in_04) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_04,
+						         SUM (sale_amt_siljuk_in_05) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_05,
+						         SUM (sale_amt_siljuk_out) * (NVL (#{as_siljukyul_out,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_out,
+						         SUM (sale_amt_siljuk_byung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_byung,
+						         SUM (sale_amt_siljuk_mbyung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_mbyung,
+						         SUM (sale_amt_banpum) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_banpum,
+						         SUM (sale_amt_halin) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_halin,
+						         SUM (sale_amt_halins01) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_halins01,
+						         SUM (sale_amt_halins02) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_halins02,
+						         (SUM (sale_amt_siljuk) + SUM (sale_amt_halins02)) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk,
+						         ROUND(AVG (sale_percent), 2) AS sale_percent,
+						         SUM (in_amt) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt,
+						         SUM (in_amt_siljuk_in) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in,
+						         SUM (in_amt_siljuk_in_local) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_local,
+						         SUM (in_amt_siljuk_in_01) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_01,
+						         SUM (in_amt_siljuk_in_02) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_02,
+						         SUM (in_amt_siljuk_in_03) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_03,
+						         SUM (in_amt_siljuk_in_04) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_04,
+						         SUM (in_amt_siljuk_in_05) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_05,
+						         SUM (in_amt_siljuk_out) * (NVL (#{as_siljukyul_out,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_out_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_out,
+						         SUM (in_amt_siljuk_byung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_byung_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_byung,
+						         SUM (in_amt_siljuk_mbyung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_byung_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_mbyung,
+						         SUM (in_amt_siljuk) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk,
+						         ROUND(AVG (in_percent), 2) AS in_percent,
+						         TO_DATE (MAX (proc_date), 'YYYYMMDDHH24MISS') AS proc_date,
+						         #{as_siljukyul_in,jdbcType=VARCHAR} AS as_siljukyul_in,
+						         #{as_siljukyul_out,jdbcType=VARCHAR} AS as_siljukyul_out,
+						         #{as_siljukyul_in_su,jdbcType=VARCHAR} AS as_siljukyul_in_su,
+						         #{as_siljukyul_out_su,jdbcType=VARCHAR} AS as_siljukyul_out_su,
+						         #{as_siljukyul_byung,jdbcType=VARCHAR} AS as_siljukyul_byung,
+						         #{as_siljukyul_byung_su,jdbcType=VARCHAR} AS as_siljukyul_byung_su
+						    FROM sale.salepart_batch2
+						   WHERE SUBSTR (date_time, 1, 6) = #{as_date_time,jdbcType=VARCHAR}
+						     AND part_cd LIKE NVL (#{as_part_cd,jdbcType=VARCHAR}, '%')
+						     AND team_cd LIKE NVL (#{as_team_cd,jdbcType=VARCHAR}, '%')
+						     AND emp_no LIKE NVL (#{as_emp_no,jdbcType=VARCHAR}, '%')
+						     AND part_cd NOT IN ('08', '09', '10', '11', '12', '13')
+						GROUP BY part_cd
+		]]>
+		 
+					<if test="sidx != ''">
+						ORDER BY ${sidx} ${sord}
+					</if>
+		
+				<if test="page != null">
+					) T0
+				)
+				WHERE PAGE = #{page,jdbcType=INTEGER}
+				</if>
+	</select>
+	
+	<select id="getPerformanceForPartGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.PerformanceVO">
+		SELECT COUNT(DISTINCT(part_cd)) total_cnt, SUM (sale_amt) AS total_sale_amt,
+			   SUM (sale_amt_siljuk_in) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in,
+			   SUM (sale_amt_siljuk_in_local) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_local,
+			   SUM (sale_amt_siljuk_in_01) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_01,
+			   SUM (sale_amt_siljuk_in_02) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_02,
+			   SUM (sale_amt_siljuk_in_03) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_03,
+			   SUM (sale_amt_siljuk_in_04) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_04,
+			   SUM (sale_amt_siljuk_in_05) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_05,
+			   SUM (sale_amt_siljuk_out) * (NVL (#{as_siljukyul_out,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_out,
+			   SUM (sale_amt_siljuk_byung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_byung,
+			   SUM (sale_amt_siljuk_mbyung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_mbyung,
+			   SUM (sale_amt_banpum) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_banpum,
+			   SUM (sale_amt_halin) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_halin,
+			   SUM (sale_amt_halins01) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_halins01,
+			   SUM (sale_amt_halins02) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_halins02,
+			   (SUM (sale_amt_siljuk) + SUM (sale_amt_halins02)) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk,
+			   ROUND(AVG (sale_percent), 2) AS total_sale_percent,
+			   SUM (in_amt) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt,
+	           SUM (in_amt_siljuk_in) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_in,
+	           SUM (in_amt_siljuk_in_local) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_in_local,
+	           SUM (in_amt_siljuk_in_01) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_in_01,
+	           SUM (in_amt_siljuk_in_02) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_in_02,
+	           SUM (in_amt_siljuk_in_03) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_in_03,
+	           SUM (in_amt_siljuk_in_04) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_in_04,
+	           SUM (in_amt_siljuk_in_05) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_in_05,
+	           SUM (in_amt_siljuk_out) * (NVL (#{as_siljukyul_out,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_out_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_out,
+	           SUM (in_amt_siljuk_byung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_byung_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_byung,
+	           SUM (in_amt_siljuk_mbyung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_byung_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_mbyung,
+	           SUM (in_amt_siljuk) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk,
+	           ROUND(AVG (in_percent), 2) AS total_in_percent
+		  FROM sale.salepart_batch2
+		 WHERE SUBSTR (date_time, 1, 6) = #{as_date_time,jdbcType=VARCHAR}
+		   AND part_cd LIKE NVL (#{as_part_cd,jdbcType=VARCHAR}, '%')
+		   AND team_cd LIKE NVL (#{as_team_cd,jdbcType=VARCHAR}, '%')
+		   AND emp_no LIKE NVL (#{as_emp_no,jdbcType=VARCHAR}, '%')
+		   AND part_cd NOT IN ('08', '09', '10', '11', '12', '13')
+	</select>
+	
+	<select id="getPerformanceForTeamGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.PerformanceVO">
+	
+		<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+    	</if>
+		<![CDATA[
+							SELECT team_cd, MAX (rpt_gb) AS rpt_gb, MAX (date_time) AS datef,
+						         MAX (date_time) AS datet, SUM (siljukyul_in) AS siljukyul_in,
+						         SUM (siljukyul_out) AS siljukyul_out,
+						         SUM (siljukyul_in_su) AS siljukyul_in_su,
+						         SUM (siljukyul_out_su) AS siljukyul_out_su,
+						         SUM (siljukyul_byung) AS siljukyul_byung,
+						         SUM (siljukyul_byung_su) AS siljukyul_byung_su,
+						         MAX (rorder) AS rorder, '' AS col1, MAX (part_nm) AS col2,
+						         team_cd AS col3, MAX (team_nm) AS col4, SUM (sale_amt) AS sale_amt,
+						         SUM (sale_amt_siljuk_in) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in,
+						         SUM (sale_amt_siljuk_in_local) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_local,
+						         SUM (sale_amt_siljuk_in_01) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_01,
+						         SUM (sale_amt_siljuk_in_02) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_02,
+						         SUM (sale_amt_siljuk_in_03) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_03,
+						         SUM (sale_amt_siljuk_in_04) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_04,
+						         SUM (sale_amt_siljuk_in_05) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_05,
+						         SUM (sale_amt_siljuk_out) * (NVL (#{as_siljukyul_out,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_out,
+						         SUM (sale_amt_siljuk_byung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_byung,
+						         SUM (sale_amt_siljuk_mbyung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_mbyung,
+						         SUM (sale_amt_banpum) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_banpum,
+						         SUM (sale_amt_halin) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_halin,
+						         SUM (sale_amt_halins01) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_halins01,
+						         SUM (sale_amt_halins02) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_halins02,
+						         (SUM (sale_amt_siljuk) + SUM (sale_amt_halins02)) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk,
+						         ROUND(AVG (sale_percent), 2) AS sale_percent, SUM (in_amt) AS in_amt,
+						         SUM (in_amt_siljuk_in) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in,
+						         SUM (in_amt_siljuk_in_local) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_local,
+						         SUM (in_amt_siljuk_in_01) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_01,
+						         SUM (in_amt_siljuk_in_02) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_02,
+						         SUM (in_amt_siljuk_in_03) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_03,
+						         SUM (in_amt_siljuk_in_04) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_04,
+						         SUM (in_amt_siljuk_in_05) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_05,
+						         SUM (in_amt_siljuk_out) * (NVL (#{as_siljukyul_out,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_out_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_out,
+						         SUM (in_amt_siljuk_byung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_byung_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_byung,
+						         SUM (in_amt_siljuk_mbyung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_byung_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_mbyung,
+						         SUM (in_amt_siljuk) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk,
+						         ROUND(AVG (in_percent), 2) AS in_percent,
+						         TO_DATE (MAX (proc_date), 'YYYYMMDDHH24MISS') AS proc_date,
+						         #{as_siljukyul_in,jdbcType=VARCHAR} AS as_siljukyul_in,
+						         #{as_siljukyul_out,jdbcType=VARCHAR} AS as_siljukyul_out,
+						         #{as_siljukyul_in_su,jdbcType=VARCHAR} AS as_siljukyul_in_su,
+						         #{as_siljukyul_out_su,jdbcType=VARCHAR} AS as_siljukyul_out_su,
+						         #{as_siljukyul_byung,jdbcType=VARCHAR} AS as_siljukyul_byung,
+						         #{as_siljukyul_byung_su,jdbcType=VARCHAR} AS as_siljukyul_byung_su
+						    FROM sale.salepart_batch2
+						   WHERE SUBSTR (date_time, 1, 6) = #{as_date_time,jdbcType=VARCHAR}
+						     AND part_cd LIKE NVL (#{as_part_cd,jdbcType=VARCHAR}, '%')
+						     AND team_cd LIKE NVL (#{as_team_cd,jdbcType=VARCHAR}, '%')
+						     AND emp_no LIKE NVL (#{as_emp_no,jdbcType=VARCHAR}, '%')
+						     AND emp_nm NOT LIKE '%도매%'
+						     AND emp_nm NOT LIKE '%기타%'
+						     AND emp_nm NOT LIKE '%미지정%'
+						     AND emp_nm NOT LIKE '%채권관리부%'
+						     AND rpt_gb NOT IN ('08', '09', '10', '11', '12', '13', 'ZZ')
+						GROUP BY team_cd
+		]]>
+		 
+					<if test="sidx != ''">
+						ORDER BY ${sidx} ${sord}
+					</if>
+		
+				<if test="page != null">
+					) T0
+				)
+				WHERE PAGE = #{page,jdbcType=INTEGER}
+				</if>
+	</select>
+		
+	<select id="getPerformanceForTeamGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.PerformanceVO">
+		SELECT COUNT(DISTINCT(team_cd)) total_cnt, SUM (sale_amt) AS total_sale_amt,
+	         SUM (sale_amt_siljuk_in_local) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_local,
+	         SUM (sale_amt_siljuk_in_01) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_01,
+	         SUM (sale_amt_siljuk_in_02) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_02,
+	         SUM (sale_amt_siljuk_in_03) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_03,
+	         SUM (sale_amt_siljuk_in_04) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_04,
+	         SUM (sale_amt_siljuk_in_05) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_05,
+	         SUM (sale_amt_siljuk_out) * (NVL (#{as_siljukyul_out,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_out,
+	         SUM (sale_amt_siljuk_byung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_byung,
+	         SUM (sale_amt_siljuk_mbyung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_mbyung,
+	         (SUM (sale_amt_siljuk) + SUM (sale_amt_halins02)) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk,
+	         SUM (in_amt) AS total_in_amt,
+	         SUM (in_amt_siljuk_in_local) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_in_local,
+	         SUM (in_amt_siljuk_in_01) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_in_01,
+	         SUM (in_amt_siljuk_in_05) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_in_05,
+	         SUM (in_amt_siljuk_out) * (NVL (#{as_siljukyul_out,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_out_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_out,
+	         SUM (in_amt_siljuk_byung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_byung_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_byung,
+	         SUM (in_amt_siljuk_mbyung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_byung_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_mbyung,
+	         SUM (in_amt_siljuk) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk
+		  FROM sale.salepart_batch2
+		 WHERE SUBSTR (date_time, 1, 6) = #{as_date_time,jdbcType=VARCHAR}
+	       AND part_cd LIKE NVL (#{as_part_cd,jdbcType=VARCHAR}, '%')
+	       AND team_cd LIKE NVL (#{as_team_cd,jdbcType=VARCHAR}, '%')
+	       AND emp_no LIKE NVL (#{as_emp_no,jdbcType=VARCHAR}, '%')
+	       AND emp_nm NOT LIKE '%도매%'
+	       AND emp_nm NOT LIKE '%기타%'
+	       AND emp_nm NOT LIKE '%미지정%'
+	       AND emp_nm NOT LIKE '%채권관리부%'
+	       AND rpt_gb NOT IN ('08', '09', '10', '11', '12', '13', 'ZZ')
+	</select>
+	
+	<select id="getPerformanceForEmpGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.PerformanceVO">
+	
+		<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+    	</if>
+		<![CDATA[
+						  SELECT emp_no, 
+						         rpt_gb, 
+						         part_cd,
+						         team_cd, 
+						         MAX (date_time) AS datef,
+						         MAX (date_time) AS datet, 
+						         SUM (siljukyul_in) AS siljukyul_in,
+						         SUM (siljukyul_out) AS siljukyul_out,
+						         SUM (siljukyul_in_su) AS siljukyul_in_su,
+						         SUM (siljukyul_out_su) AS siljukyul_out_su,
+						         SUM (siljukyul_byung) AS siljukyul_byung,
+						         SUM (siljukyul_byung_su) AS siljukyul_byung_su,
+						         MAX (rorder) AS rorder,
+						         '' AS col1, MAX (team_nm) AS col2, '' AS col3, MAX (emp_nm) AS col4,
+						         SUM (sale_amt) AS sale_amt,
+						         SUM (sale_amt_siljuk_in) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in,
+						         SUM (sale_amt_siljuk_in_local) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_local,
+						         SUM (sale_amt_siljuk_in_01) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_01,
+						         SUM (sale_amt_siljuk_in_02) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_02,
+						         SUM (sale_amt_siljuk_in_03) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_03,
+						         SUM (sale_amt_siljuk_in_04) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_04,
+						         SUM (sale_amt_siljuk_in_05) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_in_05,
+						         SUM (sale_amt_siljuk_out) * (NVL (#{as_siljukyul_out,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_out,
+						         SUM (sale_amt_siljuk_byung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_byung,
+						         SUM (sale_amt_siljuk_mbyung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk_mbyung,
+						         SUM (sale_amt_banpum) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_banpum,
+						         SUM (sale_amt_halin) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_halin,
+						         SUM (sale_amt_halins01) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_halins01,
+						         SUM (sale_amt_halins02) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_halins02,
+						         (SUM (sale_amt_siljuk) + SUM (sale_amt_halins02)) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS sale_amt_siljuk,
+						         ROUND(SUM (sale_percent) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01), 2) AS sale_percent,
+						         SUM (in_amt) AS in_amt,
+						         SUM (in_amt_siljuk_in) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in,
+						         SUM (in_amt_siljuk_in_local) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_local,
+						         SUM (in_amt_siljuk_in_01) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_01,
+						         SUM (in_amt_siljuk_in_02) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_02,
+						         SUM (in_amt_siljuk_in_03) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_03,
+						         SUM (in_amt_siljuk_in_04) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_04,
+						         SUM (in_amt_siljuk_in_05) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in_05,
+						         SUM (in_amt_siljuk_out) * (NVL (#{as_siljukyul_out,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_out_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_out,
+						         SUM (in_amt_siljuk_byung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_byung_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_byung,
+						         SUM (in_amt_siljuk_mbyung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_byung_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_mbyung,
+						         SUM (in_amt_siljuk) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk,
+						         ROUND(SUM (in_percent) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01), 2) AS in_percent,
+						         TO_DATE (MAX (proc_date), 'YYYYMMDDHH24MISS') AS proc_date,
+						         #{as_siljukyul_in,jdbcType=VARCHAR} AS as_siljukyul_in,
+						         #{as_siljukyul_out,jdbcType=VARCHAR} AS as_siljukyul_out,
+						         #{as_siljukyul_in_su,jdbcType=VARCHAR} AS as_siljukyul_in_su,
+						         #{as_siljukyul_out_su,jdbcType=VARCHAR} AS as_siljukyul_out_su,
+						         #{as_siljukyul_byung,jdbcType=VARCHAR} AS as_siljukyul_byung,
+						         #{as_siljukyul_byung_su,jdbcType=VARCHAR} AS as_siljukyul_byung_su
+						    FROM sale.salepart_batch2
+						   WHERE SUBSTR (date_time, 1, 6) = #{as_date_time,jdbcType=VARCHAR}
+					         AND part_cd LIKE NVL (#{as_part_cd,jdbcType=VARCHAR}, '%')
+					         AND team_cd LIKE NVL (#{as_team_cd,jdbcType=VARCHAR}, '%')
+					         AND emp_no LIKE NVL (#{as_emp_no,jdbcType=VARCHAR}, '%')
+						     AND emp_nm NOT LIKE '%도매%'
+						     AND emp_nm NOT LIKE '%기타%'
+						     AND emp_nm NOT LIKE '%미지정%'
+						     AND emp_nm NOT LIKE '%채권관리부%'
+						     AND rpt_gb NOT IN ('08', '09', '10', '11', '12', '13')
+						GROUP BY emp_no, 
+						         rpt_gb, 
+						         part_cd,
+						         team_cd
+		]]>
+		 
+					<if test="sidx != ''">
+						ORDER BY ${sidx} ${sord}
+					</if>
+		
+				<if test="page != null">
+					) T0
+				)
+				WHERE PAGE = #{page,jdbcType=INTEGER}
+				</if>
+	</select>
+	
+	<select id="getPerformanceForEmpGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.PerformanceVO">
+		SELECT COUNT(DISTINCT(emp_no)) total_cnt,
+			 SUM (sale_amt) AS total_sale_amt,
+	         SUM (sale_amt_siljuk_in_local) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_local,
+	         SUM (sale_amt_siljuk_in_01) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_01,
+	         SUM (sale_amt_siljuk_in_02) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_02,
+	         SUM (sale_amt_siljuk_in_03) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_03,
+	         SUM (sale_amt_siljuk_in_04) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_04,
+	         SUM (sale_amt_siljuk_in_05) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_in_05,
+	         SUM (sale_amt_siljuk_out) * (NVL (#{as_siljukyul_out,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_out,
+	         SUM (sale_amt_siljuk_byung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_byung,
+	         SUM (sale_amt_siljuk_mbyung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk_mbyung,
+	         (SUM (sale_amt_siljuk) + SUM (sale_amt_halins02)) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) AS total_sale_amt_siljuk,
+	         SUM (in_amt) AS total_in_amt,
+	         SUM (in_amt_siljuk_in) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS in_amt_siljuk_in,
+	         SUM (in_amt_siljuk_in_local) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_in_local,
+	         SUM (in_amt_siljuk_in_01) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_in_01,
+	         SUM (in_amt_siljuk_in_05) * (NVL (#{as_siljukyul_in,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_in_05,
+	         SUM (in_amt_siljuk_out) * (NVL (#{as_siljukyul_out,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_out_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_out,
+	         SUM (in_amt_siljuk_byung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_byung_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_byung,
+	         SUM (in_amt_siljuk_mbyung) * (NVL (#{as_siljukyul_byung,jdbcType=VARCHAR}, 100) * 0.01) * (NVL (#{as_siljukyul_byung_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk_mbyung,
+	         SUM (in_amt_siljuk) * (NVL (#{as_siljukyul_in_su,jdbcType=VARCHAR}, 100) * 0.01) AS total_in_amt_siljuk
+		  FROM sale.salepart_batch2
+		 WHERE SUBSTR (date_time, 1, 6) = #{as_date_time,jdbcType=VARCHAR}
+	       AND part_cd LIKE NVL (#{as_part_cd,jdbcType=VARCHAR}, '%')
+	       AND team_cd LIKE NVL (#{as_team_cd,jdbcType=VARCHAR}, '%')
+	       AND emp_no LIKE NVL (#{as_emp_no,jdbcType=VARCHAR}, '%')
+	       AND emp_nm NOT LIKE '%도매%'
+		   AND emp_nm NOT LIKE '%기타%'
+		   AND emp_nm NOT LIKE '%미지정%'
+		   AND emp_nm NOT LIKE '%채권관리부%'
+		   AND rpt_gb NOT IN ('08', '09', '10', '11', '12', '13')
+	</select>
+	
+</mapper>
+	

@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : business_companyCardMgmt.xml
+  * @메뉴명 : 법인카드관리 IBK
+  * @최초작성일 : 2014/11/24
+  * @author : 윤범진          
+  * @수정내역 :
+ -->
+<mapper namespace="companyCardMgmt"> 
+	
+	<select id="getEmpInfo" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CompanyCardMgmtVO">
+		select a.sawon_id ls_sawon_id,a.sawon_nm ls_sawon_nm,a.dept_cd ls_dept_cd,b.dept_nm ls_dept_nm
+		  from sale.sale0007 a, sale.sale0008 b
+		 where a.dept_cd = b.dept_cd
+		   and a.sawon_id = #{gs_empCode,jdbcType=VARCHAR}
+	</select>
+	
+	<select id="getAssgnCd" parameterType="hashmap" resultType="java.lang.String">
+		select assgn_cd is_assgn_cd
+		  from hanahr.hr_hc_empbas_0
+		 where emp_no = (select insa_sawon_id from sale.sale0007 where sawon_id = #{gs_empCode,jdbcType=VARCHAR})
+	</select>
+	
+	<select id="getGaejungCodeList" resultType="com.hanaph.saleon.business.vo.CompanyCardMgmtVO">
+		select a.gaejung_cd,a.gaejung_nm,a.bigo
+		  from (
+		        select gaejung_cd,gaejung_nm,'식당,술집'								as bigo from account.faca03c where gaejung_nm like '%복리후생비%'  union all
+		        select gaejung_cd,gaejung_nm,'주유소,차수리,교통카드충전,하이패스'		as bigo from account.faca03c where gaejung_nm like '%차량유지비%'  union all
+		        select gaejung_cd,gaejung_nm,'교통비(버스,기차,비행기),숙박비,주차비'	as bigo from account.faca03c where gaejung_nm like '%여비교통비%'  union all
+		        select gaejung_cd,gaejung_nm,'가전제품매장,철물점 등'					as bigo from account.faca03c where gaejung_nm like '%소모품비%'    union all
+		        select gaejung_cd,gaejung_nm,''										as bigo from account.faca03c where gaejung_nm like '%회의비%'      union all
+		        select gaejung_cd,gaejung_nm,''										as bigo from account.faca03c where gaejung_nm like '%교육훈련비%'  union all
+		        select gaejung_cd,gaejung_nm,''										as bigo from account.faca03c where gaejung_nm like '%도서인쇄비%'  union all
+		        select gaejung_cd,gaejung_nm,''										as bigo from account.faca03c where gaejung_nm like '%운반비%'      union all
+		        select gaejung_cd,gaejung_nm,'철도청,반환수수료'						as bigo from account.faca03c where gaejung_nm like '%지급수수료%'  union all
+		        select gaejung_cd,gaejung_nm,''										as bigo from account.faca03c where gaejung_nm like '%집기비품%'    union all
+		        select gaejung_cd,gaejung_nm,''										as bigo from account.faca03c where gaejung_nm like '%판매촉진비%'  union all
+		        select gaejung_cd,gaejung_nm,''										as bigo from account.faca03c where gaejung_nm like '%통신비%'      union all
+		        select gaejung_cd,gaejung_nm,''										as bigo from account.faca03c where gaejung_nm like '%광고선전비%'
+		       ) a, account.faca03c b
+		 where b.gaejung_cd = a.gaejung_cd
+		   and b.junpyo_yn = 'Y'
+		   and b.sayong_yn = 'Y'
+		   and b.gaejung_cd in ('81050AA','81110AB','81230AA','81060AA','81170AA','81050AA','81210AA')
+	</select>
+	
+	<select id="getCompanyCardHistoryGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CompanyCardMgmtVO">
+		<if test="page != null">
+				SELECT *
+					FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+		        		FROM (
+	    	</if>
+			<![CDATA[
+							  SELECT a.CARD_NO,   
+							         TO_CHAR(TO_DATE(a.USE_DT), 'YYYY-MM-DD') use_dt,    
+							         TO_CHAR(TO_DATE(a.USE_TM, 'HH24:MI:SS'), 'HH24:MI:SS') use_tm,
+							         a.CARD_OK_NO,
+							         a.USE_GUBUN,   
+							         a.SAWON_ID,   
+							         a.DEPT_CD,   
+							         a.USE_AMT,   
+							         a.SAUPJANG_NM,   
+							         a.SAUP_NO,   
+							         a.tax_gb,
+							         a.GAEJUNG_CD,
+							         (select gaejung_nm from account.faca03c where gaejung_cd = a.gaejung_cd) as gaejung_nm,
+							         a.USE_DETAIL,   
+							         a.TEAMJANG_CONF_YN,   
+							         a.TEAMJANG_CONF_SABUN,   
+							         a.SALECAMP_CONF_YN,   
+							         a.SALECAMP_CONF_SABUN,   
+							         a.JUNPYO_YN,   
+							         a.JUNPYO_NO,   
+							         a.JUNPYO_SABUN,
+							         a.JUNPYO_CRTDT,
+							         a.JUNPYO_RESULT,
+							         a.JUKYO,
+							         a.GONGJAE_YN,
+							         'N' as SEL_YN, 
+							         (select sawon_nm from sale.sale0007 where sawon_id = a.TEAMJANG_CONF_SABUN) as TEAMJANG_CONF_SABUN_nm,
+							         (select sawon_nm from sale.sale0007 where sawon_id = a.sawon_id) as sawon_nm,
+							         (select dept_nm from sale.sale0008 where dept_cd = a.dept_cd) as dept_nm,
+							         (select sawon_nm from sale.sale0007 where sawon_id = a.salecamp_conf_sabun) as salecamp_conf_sabun_nm,
+							         nvl((select seungin_yn from account.faca11m where h_junpyo_cd = a.junpyo_no),'N') as seungin_yn
+							    FROM sale.SALE0601_IBK a 
+							   WHERE a.USE_DT BETWEEN #{as_use_dt_fr,jdbcType=VARCHAR} AND #{as_use_dt_to,jdbcType=VARCHAR}
+							     AND a.SAWON_ID IN (SELECT SAWON_ID FROM sale.SALE0007 WHERE part_gb is not null)
+							     AND a.SAWON_ID IN ( SELECT SAWON_ID FROM sale.SALE0007 WHERE SIL_SAWON_ID = NVL(trim(#{as_sawon_id,jdbcType=VARCHAR})   ,'%') )
+							     AND trim(#{as_teammember,jdbcType=VARCHAR}) = 'Y'   
+							UNION
+							  SELECT a.CARD_NO,   
+							         TO_CHAR(TO_DATE(a.USE_DT), 'YYYY-MM-DD') use_dt,    
+							         TO_CHAR(TO_DATE(a.USE_TM, 'HH24:MI:SS'), 'HH24:MI:SS') use_tm,
+							         a.CARD_OK_NO,
+							         a.USE_GUBUN,   
+							         a.SAWON_ID,   
+							         a.DEPT_CD,   
+							         a.USE_AMT,   
+							         a.SAUPJANG_NM,   
+							         a.SAUP_NO,   
+							         a.tax_gb,
+							         a.GAEJUNG_CD,
+							         (select gaejung_nm from account.faca03c where gaejung_cd = a.gaejung_cd) as gaejung_nm,
+							         a.USE_DETAIL,   
+							         a.TEAMJANG_CONF_YN,   
+							         a.TEAMJANG_CONF_SABUN,   
+							         a.SALECAMP_CONF_YN,   
+							         a.SALECAMP_CONF_SABUN,   
+							         a.JUNPYO_YN,   
+							         a.JUNPYO_NO,   
+							         a.JUNPYO_SABUN,
+							         a.JUNPYO_CRTDT,
+							         a.JUNPYO_RESULT,
+							         a.JUKYO,
+							         a.GONGJAE_YN,
+							         'N' as SEL_YN, 
+							         (select sawon_nm from sale.sale0007 where sawon_id = a.TEAMJANG_CONF_SABUN) as TEAMJANG_CONF_SABUN_nm,
+							         (select sawon_nm from sale.sale0007 where sawon_id = a.sawon_id) as sawon_nm,
+							         (select dept_nm from sale.sale0008 where dept_cd = a.dept_cd) as dept_nm,
+							         (select sawon_nm from sale.sale0007 where sawon_id = a.salecamp_conf_sabun) as salecamp_conf_sabun_nm,
+							         nvl((select seungin_yn from account.faca11m where h_junpyo_cd = a.junpyo_no),'N') as seungin_yn
+							    FROM sale.SALE0601_IBK a 
+							   WHERE a.USE_DT BETWEEN #{as_use_dt_fr,jdbcType=VARCHAR} AND #{as_use_dt_to,jdbcType=VARCHAR}
+							     AND a.SAWON_ID IN (SELECT SAWON_ID FROM sale.SALE0007 WHERE part_gb is not null)
+							     AND a.SAWON_ID IN (   SELECT SAWON_ID FROM sale.SALE0007 
+							                                WHERE DEPT_CD IN ( SELECT DEPT_CD FROM sale.SALE0007 WHERE SIL_SAWON_ID = NVL(trim(#{as_sawon_id,jdbcType=VARCHAR}),'%') AND GUBUN = 'Y' )  
+							                                        OR SAWON_ID IN ( SELECT SAWON_ID FROM sale.SALE0007 WHERE SIL_SAWON_ID = NVL(trim(#{as_sawon_id,jdbcType=VARCHAR}),'%'))
+							                                   )   
+							     AND trim(#{as_teammember,jdbcType=VARCHAR}) = 'N'
+		     ]]>
+		 
+					<if test="sidx != ''">
+						ORDER BY ${sidx} ${sord}
+					</if>
+		
+				<if test="page != null">
+					) T0
+				)
+				WHERE PAGE = #{page,jdbcType=INTEGER}
+				</if>
+	</select>
+	
+	<select id="getCompanyCardHistoryGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CompanyCardMgmtVO">
+	  SELECT count(*) total_cnt, SUM(NVL(a.USE_AMT, 0)) total_use_amt
+		FROM (
+			  SELECT a.CARD_NO,   
+			         a.USE_DT,    
+			         a.USE_TM,    
+			         a.CARD_OK_NO,
+			         a.USE_GUBUN,   
+			         a.SAWON_ID,   
+			         a.DEPT_CD,   
+			         a.USE_AMT,   
+			         a.SAUPJANG_NM,   
+			         a.SAUP_NO,   
+			         a.tax_gb,
+			         a.GAEJUNG_CD,
+			         (select gaejung_nm from account.faca03c where gaejung_cd = a.gaejung_cd) as gaejung_nm,   
+			         a.USE_DETAIL,   
+			         a.TEAMJANG_CONF_YN,   
+			         a.TEAMJANG_CONF_SABUN,   
+			         a.SALECAMP_CONF_YN,   
+			         a.SALECAMP_CONF_SABUN,   
+			         a.JUNPYO_YN,   
+			         a.JUNPYO_NO,   
+			         a.JUNPYO_SABUN,
+			         a.JUNPYO_CRTDT,
+			         a.JUNPYO_RESULT,
+			         a.JUKYO,
+			         a.GONGJAE_YN,
+			         'N' as SEL_YN, 
+			         (select sawon_nm from sale.sale0007 where sawon_id = a.TEAMJANG_CONF_SABUN) as TEAMJANG_CONF_SABUN_nm,
+			         (select sawon_nm from sale.sale0007 where sawon_id = a.sawon_id) as sawon_nm,
+			         (select dept_nm from sale.sale0008 where dept_cd = a.dept_cd) as dept_nm,
+			         (select sawon_nm from sale.sale0007 where sawon_id = a.salecamp_conf_sabun) as salecamp_conf_sabun_nm,
+			         nvl((select seungin_yn from account.faca11m where h_junpyo_cd = a.junpyo_no),'N') as seungin_yn
+			    FROM sale.SALE0601_IBK a 
+			   WHERE a.USE_DT BETWEEN #{as_use_dt_fr,jdbcType=VARCHAR} AND #{as_use_dt_to,jdbcType=VARCHAR}
+			     AND a.SAWON_ID IN (SELECT SAWON_ID FROM sale.SALE0007 WHERE part_gb is not null)
+			     AND a.SAWON_ID IN ( SELECT SAWON_ID FROM sale.SALE0007 WHERE SIL_SAWON_ID = NVL(trim(#{as_sawon_id,jdbcType=VARCHAR})   ,'%') )
+			     AND trim(#{as_teammember,jdbcType=VARCHAR}) = 'Y'   
+			UNION
+			  SELECT a.CARD_NO,   
+			         a.USE_DT,    
+			         a.USE_TM,    
+			         a.CARD_OK_NO,
+			         a.USE_GUBUN,   
+			         a.SAWON_ID,   
+			         a.DEPT_CD,   
+			         a.USE_AMT,   
+			         a.SAUPJANG_NM,   
+			         a.SAUP_NO,   
+			         a.tax_gb,
+			         a.GAEJUNG_CD,
+			         (select gaejung_nm from account.faca03c where gaejung_cd = a.gaejung_cd) as gaejung_nm,   
+			         a.USE_DETAIL,   
+			         a.TEAMJANG_CONF_YN,   
+			         a.TEAMJANG_CONF_SABUN,   
+			         a.SALECAMP_CONF_YN,   
+			         a.SALECAMP_CONF_SABUN,   
+			         a.JUNPYO_YN,   
+			         a.JUNPYO_NO,   
+			         a.JUNPYO_SABUN,
+			         a.JUNPYO_CRTDT,
+			         a.JUNPYO_RESULT,
+			         a.JUKYO,
+			         a.GONGJAE_YN,
+			         'N' as SEL_YN, 
+			         (select sawon_nm from sale.sale0007 where sawon_id = a.TEAMJANG_CONF_SABUN) as TEAMJANG_CONF_SABUN_nm,
+			         (select sawon_nm from sale.sale0007 where sawon_id = a.sawon_id) as sawon_nm,
+			         (select dept_nm from sale.sale0008 where dept_cd = a.dept_cd) as dept_nm,
+			         (select sawon_nm from sale.sale0007 where sawon_id = a.salecamp_conf_sabun) as salecamp_conf_sabun_nm,
+			         nvl((select seungin_yn from account.faca11m where h_junpyo_cd = a.junpyo_no),'N') as seungin_yn
+			    FROM sale.SALE0601_IBK a 
+			   WHERE a.USE_DT BETWEEN #{as_use_dt_fr,jdbcType=VARCHAR} AND #{as_use_dt_to,jdbcType=VARCHAR}
+			     AND a.SAWON_ID IN (SELECT SAWON_ID FROM sale.SALE0007 WHERE part_gb is not null)
+			     AND a.SAWON_ID IN (   SELECT SAWON_ID FROM sale.SALE0007 
+			                                WHERE DEPT_CD IN ( SELECT DEPT_CD FROM sale.SALE0007 WHERE SIL_SAWON_ID = NVL(trim(#{as_sawon_id,jdbcType=VARCHAR}),'%') AND GUBUN = 'Y' )  
+			                                        OR SAWON_ID IN ( SELECT SAWON_ID FROM sale.SALE0007 WHERE SIL_SAWON_ID = NVL(trim(#{as_sawon_id,jdbcType=VARCHAR}),'%'))
+			                                   )   
+			     AND trim(#{as_teammember,jdbcType=VARCHAR}) = 'N') a
+	</select>
+	
+	<update id="updateCardUseDetail" parameterType="com.hanaph.saleon.business.vo.CompanyCardMgmtVO">
+		UPDATE sale.SALE0601_IBK
+		   SET TAX_GB = #{tax_gb,jdbcType=VARCHAR}, GONGJAE_YN = #{gongjae_yn,jdbcType=VARCHAR},
+		   	   USE_DETAIL = #{use_detail,jdbcType=VARCHAR}, GAEJUNG_CD = #{gaejung_cd,jdbcType=VARCHAR},
+		   	   TEAMJANG_CONF_YN = #{teamjang_conf_yn,jdbcType=VARCHAR}, JUKYO = #{jukyo,jdbcType=VARCHAR},
+		   	   TEAMJANG_CONF_SABUN = #{teamjang_conf_sabun,jdbcType=VARCHAR}
+		 WHERE USE_DT = #{use_dt,jdbcType=VARCHAR}
+		   AND USE_TM = #{use_tm,jdbcType=VARCHAR}
+		   AND CARD_NO = #{card_no,jdbcType=VARCHAR} 
+		   AND CARD_OK_NO = #{card_ok_no,jdbcType=VARCHAR}
+		   AND USE_GUBUN = '03'
+	</update>
+	
+</mapper>
+	

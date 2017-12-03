@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : business_collection.xml
+  * @메뉴명 : 수금현황
+  * @최초작성일 : 2014/10/28
+  * @author : 윤범진          
+  * @수정내역 :
+ -->
+<mapper namespace="collection"> 
+	
+	<select id="getCollectionGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CollectionVO">
+	
+		<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+    	</if>
+		<![CDATA[
+						SELECT a.ym, a.ymd, a.item_id, a.cust_id, a.cust_nm, a.vou_no, a.rcust_id,
+						       a.rcust_nm, a.sawon_id, a.sawon_nm, a.dept_cd, a.dept_nm, a.sawon_idh,
+						       b.sawon_nm sawon_nmh, b.dept_cd dept_cdh, c.dept_nm dept_cmh, a.sukum,
+						       a.tot, a.bill_no, a.end_ymd, a.cust_gb1, a.rcust_gb1, a.rcust_gb1h,
+						       a.balhang
+						  FROM (SELECT TO_CHAR (a.ymd, 'YYYYMM') ym, TO_CHAR (a.ymd, 'YYYY-MM-DD') ymd,
+						               DECODE (a.junpyo_gb,
+						                       '01', '현금',
+						                       '10', '매출할인',
+						                       '20', '부실채권',
+						                       '30', '거래이관',
+						                       '35', '대손상각',
+						                       '기타수금'
+						                      ) item_id,
+						               a.cust_id cust_id, d.cust_nm cust_nm, d.vou_no vou_no,
+						               a.rcust_id rcust_id, e.cust_nm rcust_nm, a.sawon_id sawon_id,
+						               c.sawon_nm sawon_nm, c.dept_cd dept_cd, f.dept_nm dept_nm,
+						               sale.f_get_sale0401_sawonidh (a.rcust_id, a.ymd) sawon_idh,
+						               cash_amt sukum, NVL (- (cash_amt), 0) tot, '' bill_no,
+						               '' end_ymd, d.cust_gb1 cust_gb1, e.cust_gb1 rcust_gb1,
+						               sale.f_get_sale0003h_custgb1 (a.rcust_id, a.ymd) rcust_gb1h,
+						               '' balhang
+						          FROM (select z.*
+	                                          ,sale.F_GET_SALE0401_SAWONIDH(z.CUST_ID,  z.YMD) as siljuk_sawon_id
+	                                      from sale.SALE0401 z
+	                                   ) a,
+						               sale.sale0007 c,
+						               sale.sale0003 d,
+						               sale.sale0003 e,
+						               sale.sale0008 f
+						         WHERE a.siljuk_sawon_id = c.sawon_id(+)
+						           AND c.dept_cd = f.dept_cd(+)
+						           AND a.cust_id = d.cust_id
+						           AND a.rcust_id = e.cust_id
+						           AND a.junpyo_gb <> '30'
+						           AND a.ymd BETWEEN #{ad_fr_date,jdbcType=DATE} AND #{ad_to_date,jdbcType=DATE}
+						           ]]>
+								<if test="as_fr_cust != ''">
+								   AND a.cust_id = #{as_fr_cust,jdbcType=VARCHAR}
+								</if>
+								<![CDATA[ 
+							       AND a.siljuk_sawon_id IN ( select sawon_id 
+	                                                              from sale0007 
+	                                                             where dept_cd IN  ( select sale_dept_cd 
+	                                                                                   from hr_co_depart_0 
+	                                                                                connect by prior dept_cd = up_dept_cd
+	                                                                                  start with dept_cd = (    select dept_cd 
+	                                                                                                              from hr_co_depart_0 
+	                                                                                                             where level = 2
+	                                                                                                           connect by  dept_cd = prior up_dept_cd
+	                                                                                                             start with dept_cd = (select dept_cd from hr_hc_empbas_0 where emp_no in (select insa_sawon_id from sale0007 where sawon_id = #{as_emp_cd}) )                                                                         
+	                                                                                                        )
+	                                                                                )
+	                                                               and gubun = 'Y' 
+	                                                               and #{as_assgnCode} in ('27000','27010','27020','27025')
+	                                                             union all
+	                                                             select sawon_id 
+	                                                               from sale0007
+	                                                              where dept_cd = #{as_dept_cd}
+	                                                                and #{as_assgnCode} in ('27027','27030','27035')
+	                                                             union all
+	                                                             select sawon_id 
+	                                                               from sale0007
+	                                                              where sawon_id = #{as_emp_cd}
+	                                                                and #{as_assgnCode} in ('27040','27050')
+	                                                         ) 
+						           AND cash_amt <> 0
+						        UNION ALL
+						        SELECT TO_CHAR (a.ymd, 'YYYYMM') ym, TO_CHAR (a.ymd, 'YYYY-MM-DD') ymd,
+						               DECODE (a.junpyo_gb,
+						                       '01', DECODE (b.bill_gb, '100', '신용카드', '어음'),
+						                       '10', '매출할인',
+						                       '20', '부실채권',
+						                       '30', '거래이관',
+						                       '35', '대손상각',
+						                       '기타수금'
+						                      ) item_id,
+						               a.cust_id cust_id, d.cust_nm cust_nm, d.vou_no vou_no,
+						               a.rcust_id rcust_id, e.cust_nm rcust_nm, a.sawon_id sawon_id,
+						               c.sawon_nm sawon_nm, c.dept_cd dept_cd, f.dept_nm dept_nm,
+						               sale.f_get_sale0401_sawonidh (a.rcust_id, a.ymd) sawon_idh,
+						               amt sukum, NVL (- (amt), 0) tot, b.bill_no bill_no,
+						               TO_CHAR (b.end_ymd, 'YYYY-MM-DD') end_ymd, d.cust_gb1 cust_gb1,
+						               e.cust_gb1 rcust_gb1,
+						               sale.f_get_sale0003h_custgb1 (a.rcust_id, a.ymd) rcust_gb1h,
+						               b.balhang balhang
+						          FROM (select z.*
+	                                          ,sale.F_GET_SALE0401_SAWONIDH(z.CUST_ID,  z.YMD) as siljuk_sawon_id
+	                                      from sale.SALE0401 z
+	                                   ) a,
+						               sale.sale0402 b,
+						               sale.sale0007 c,
+						               sale.sale0003 d,
+						               sale.sale0003 e,
+						               sale.sale0008 f
+						         WHERE a.siljuk_sawon_id = c.sawon_id
+						           AND c.dept_cd = f.dept_cd(+)
+						           AND a.cust_id = d.cust_id
+						           AND a.rcust_id = e.cust_id
+						           AND a.junpyo_gb <> '30'
+						           AND a.ymd BETWEEN #{ad_fr_date,jdbcType=DATE} AND #{ad_to_date,jdbcType=DATE}
+						           AND a.junpyo_no = b.junpyo_no
+						           ]]>
+								<if test="as_fr_cust != ''">
+								   AND a.cust_id = #{as_fr_cust,jdbcType=VARCHAR}
+								</if>
+								<![CDATA[
+							       AND a.siljuk_sawon_id IN ( select sawon_id 
+	                                                              from sale0007 
+	                                                             where dept_cd IN  ( select sale_dept_cd 
+	                                                                                   from hr_co_depart_0 
+	                                                                                connect by prior dept_cd = up_dept_cd
+	                                                                                  start with dept_cd = (    select dept_cd 
+	                                                                                                              from hr_co_depart_0 
+	                                                                                                             where level = 2
+	                                                                                                           connect by  dept_cd = prior up_dept_cd
+	                                                                                                             start with dept_cd = (select dept_cd from hr_hc_empbas_0 where emp_no in (select insa_sawon_id from sale0007 where sawon_id = #{as_emp_cd}) )                                                                         
+	                                                                                                        )
+	                                                                                )
+	                                                               and gubun = 'Y'  
+	                                                               and #{as_assgnCode} in ('27000','27010','27020','27025')
+	                                                             union all
+	                                                             select sawon_id 
+	                                                               from sale0007
+	                                                              where dept_cd = #{as_dept_cd}
+	                                                                and #{as_assgnCode} in ('27027','27030','27035')
+	                                                             union all
+	                                                             select sawon_id 
+	                                                               from sale0007
+	                                                              where sawon_id = #{as_emp_cd}
+	                                                                and #{as_assgnCode} in ('27040','27050')
+	                                                         ) 
+						                   ) a,
+						       sale.sale0007 b,
+						       sale.sale0008 c
+						 WHERE a.sawon_idh = b.sawon_id(+) AND b.dept_cd = c.dept_cd(+)
+		                  ]]>
+		 
+					<if test="sidx != ''">
+						ORDER BY ${sidx} ${sord}
+					</if>
+		
+				<if test="page != null">
+					) T0
+				)
+				WHERE PAGE = #{page,jdbcType=INTEGER}
+				</if>
+	</select>
+	
+	<select id="getCollectionGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CollectionVO">
+	<![CDATA[
+		SELECT COUNT(*) total_cnt, SUM(NVL(a.sukum, 0)) total_sukum
+		  FROM (SELECT TO_CHAR (a.ymd, 'YYYYMM') ym, TO_CHAR (a.ymd, 'YYYY-MM-DD') ymd,
+		               DECODE (a.junpyo_gb,
+		                       '01', '현금',
+		                       '10', '매출할인',
+		                       '20', '부실채권',
+		                       '30', '거래이관',
+		                       '35', '대손상각',
+		                       '기타수금'
+		                      ) item_id,
+		               a.cust_id cust_id, d.cust_nm cust_nm, d.vou_no vou_no,
+		               a.rcust_id rcust_id, e.cust_nm rcust_nm, a.sawon_id sawon_id,
+		               c.sawon_nm sawon_nm, c.dept_cd dept_cd, f.dept_nm dept_nm,
+		               sale.f_get_sale0401_sawonidh (a.rcust_id, a.ymd) sawon_idh,
+		               cash_amt sukum, NVL (- (cash_amt), 0) tot, '' bill_no,
+		               '' end_ymd, d.cust_gb1 cust_gb1, e.cust_gb1 rcust_gb1,
+		               sale.f_get_sale0003h_custgb1 (a.rcust_id, a.ymd) rcust_gb1h,
+		               '' balhang
+		          FROM (select z.*
+                              ,sale.F_GET_SALE0401_SAWONIDH(z.CUST_ID,  z.YMD) as siljuk_sawon_id
+                          from sale.SALE0401 z
+                       ) a,
+		               sale.sale0007 c,
+		               sale.sale0003 d,
+		               sale.sale0003 e,
+		               sale.sale0008 f
+		         WHERE a.siljuk_sawon_id = c.sawon_id(+)
+		           AND c.dept_cd = f.dept_cd(+)
+		           AND a.cust_id = d.cust_id
+		           AND a.rcust_id = e.cust_id
+		           AND a.junpyo_gb <> '30'
+		           AND a.ymd BETWEEN #{ad_fr_date,jdbcType=DATE} AND #{ad_to_date,jdbcType=DATE}
+		           ]]>
+				<if test="as_fr_cust != ''">
+				   AND a.cust_id = #{as_fr_cust,jdbcType=VARCHAR}
+				</if>
+				<![CDATA[
+		       AND a.siljuk_sawon_id IN ( select sawon_id 
+                                                          from sale0007 
+                                                         where dept_cd IN  ( select sale_dept_cd 
+                                                                               from hr_co_depart_0 
+                                                                            connect by prior dept_cd = up_dept_cd
+                                                                              start with dept_cd = (    select dept_cd 
+                                                                                                          from hr_co_depart_0 
+                                                                                                         where level = 2
+                                                                                                       connect by  dept_cd = prior up_dept_cd
+                                                                                                         start with dept_cd = (select dept_cd from hr_hc_empbas_0 where emp_no in (select insa_sawon_id from sale0007 where sawon_id = #{as_emp_cd}) )                                                                         
+                                                                                                    )
+                                                                            )
+                                                           and gubun = 'Y'  
+                                                           and #{as_assgnCode} in ('27000','27010','27020','27025')
+                                                         union all
+                                                         select sawon_id 
+                                                           from sale0007
+                                                          where dept_cd = #{as_dept_cd}
+                                                            and #{as_assgnCode} in ('27027','27030','27035')
+                                                         union all
+                                                         select sawon_id 
+                                                           from sale0007
+                                                          where sawon_id = #{as_emp_cd}
+                                                            and #{as_assgnCode} in ('27040','27050')
+                                                     ) 
+		           AND cash_amt <> 0
+		        UNION ALL
+		        SELECT TO_CHAR (a.ymd, 'YYYYMM') ym, TO_CHAR (a.ymd, 'YYYY-MM-DD') ymd,
+		               DECODE (a.junpyo_gb,
+		                       '01', DECODE (b.bill_gb, '100', '신용카드', '어음'),
+		                       '10', '매출할인',
+		                       '20', '부실채권',
+		                       '30', '거래이관',
+		                       '35', '대손상각',
+		                       '기타수금'
+		                      ) item_id,
+		               a.cust_id cust_id, d.cust_nm cust_nm, d.vou_no vou_no,
+		               a.rcust_id rcust_id, e.cust_nm rcust_nm, a.sawon_id sawon_id,
+		               c.sawon_nm sawon_nm, c.dept_cd dept_cd, f.dept_nm dept_nm,
+		               sale.f_get_sale0401_sawonidh (a.rcust_id, a.ymd) sawon_idh,
+		               amt sukum, NVL (- (amt), 0) tot, b.bill_no bill_no,
+		               TO_CHAR (b.end_ymd, 'YYYY-MM-DD') end_ymd, d.cust_gb1 cust_gb1,
+		               e.cust_gb1 rcust_gb1,
+		               sale.f_get_sale0003h_custgb1 (a.rcust_id, a.ymd) rcust_gb1h,
+		               b.balhang balhang
+		          FROM (select z.*
+                              ,sale.F_GET_SALE0401_SAWONIDH(z.CUST_ID,  z.YMD) as siljuk_sawon_id
+                          from sale.SALE0401 z
+                       ) a,
+		               sale.sale0402 b,
+		               sale.sale0007 c,
+		               sale.sale0003 d,
+		               sale.sale0003 e,
+		               sale.sale0008 f
+		         WHERE a.siljuk_sawon_id = c.sawon_id
+		           AND c.dept_cd = f.dept_cd(+)
+		           AND a.cust_id = d.cust_id
+		           AND a.rcust_id = e.cust_id
+		           AND a.junpyo_gb <> '30'
+		           AND a.ymd BETWEEN #{ad_fr_date,jdbcType=DATE} AND #{ad_to_date,jdbcType=DATE}
+		           AND a.junpyo_no = b.junpyo_no
+		           ]]>
+				<if test="as_fr_cust != ''">
+				   AND a.cust_id = #{as_fr_cust,jdbcType=VARCHAR}
+				</if>
+				<![CDATA[		      
+				 AND a.siljuk_sawon_id IN ( select sawon_id 
+				                            from sale0007 
+				                           where dept_cd IN  ( select sale_dept_cd 
+				                                                 from hr_co_depart_0 
+				                                              connect by prior dept_cd = up_dept_cd
+				                                                start with dept_cd = (    select dept_cd 
+				                                                                            from hr_co_depart_0 
+				                                                                           where level = 2
+				                                                                         connect by  dept_cd = prior up_dept_cd
+				                                                                           start with dept_cd = (select dept_cd from hr_hc_empbas_0 where emp_no in (select insa_sawon_id from sale0007 where sawon_id = #{as_emp_cd}) )                                                                         
+				                                                                      )
+				                                              )
+				                             and gubun = 'Y'                                                            and #{as_assgnCode} in ('27000','27010','27020','27025')
+                                           union all
+                                           select sawon_id 
+                                             from sale0007
+                                            where dept_cd = #{as_dept_cd}
+                                              and #{as_assgnCode} in ('27027','27030','27035')
+                                           union all
+                                           select sawon_id 
+                                             from sale0007
+                                            where sawon_id = #{as_emp_cd}
+                                              and #{as_assgnCode} in ('27040','27050')
+				                       ) 
+		                   ) a,
+		       sale.sale0007 b,
+		       sale.sale0008 c
+		 WHERE a.sawon_idh = b.sawon_id(+) AND b.dept_cd = c.dept_cd(+)
+	]]>
+	</select>
+	
+</mapper>
+	

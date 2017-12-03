@@ -1,0 +1,623 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org--DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : order_online.xml
+  * @메뉴명 : 온라인 주문 발주 > 온라인 주문 조회/등록/수정/삭제
+  * @최초작성일 : 2014/10/28            
+  * @author : 우정아                  
+  * @수정내역 :	
+ -->
+<mapper namespace="order"> 
+	
+	<!-- 판매처 목록  -->
+	<select id="getStoreGridList" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.OrderVO">
+		<![CDATA[	
+		SELECT A.CUST_ID CUST_ID, A.CUST_NM CUST_NM, A.VOU_NO VOU_NO,
+		       A.PRESIDENT PRESIDENT
+		  FROM SALE.SALE0003 A,
+		       ( SELECT A.RCUST_ID
+		           FROM SALE.SALE0405 A,SALE.SALE0004 B
+                  WHERE A.ITEM_ID = B.ITEM_ID
+                    AND B.JUMUN_VIEW_YN = 'Y'
+		            AND A.CUST_ID = #{as_cust_id}
+		            AND A.ITEM_ID NOT IN ('86001', '86002')
+		            AND A.YMD >= TRUNC (SYSDATE)
+		          GROUP BY A.RCUST_ID
+		        ) B
+		 WHERE A.CUST_ID = B.RCUST_ID
+		   AND A.CUST_GB1 <> '40'
+		   AND A.CUST_ID || A.CUST_NM LIKE '%' || #{searchKeyword} || '%'
+		 
+		]]>
+		<if test="sidx != ''">
+			ORDER BY ${sidx} ${sord}
+		</if>	
+	</select>
+	
+	
+	
+	<!-- 여신규정 -->
+	<select id="getCreditRate" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.OrderVO">
+
+		SELECT SUM (CASE CODE1
+		               WHEN '02'
+		                  THEN TO_NUMBER (BIGO)
+		               ELSE 0
+		            END) LD_DAMBO_RATE,
+		       SUM (CASE CODE1
+		               WHEN '03'
+		                  THEN TO_NUMBER (BIGO)
+		               ELSE 0
+		            END) LD_CREDIT_AMT,
+		       SUM (CASE CODE1
+		               WHEN '04'
+		                  THEN TO_NUMBER (BIGO)
+		               ELSE 0
+		            END) LD_CREDIT_DAMBO
+		  FROM SALE.SALE0001
+		 WHERE CODE_GB = '4001'
+		 
+	</select>
+
+
+	<!-- 담당자,보증인 -->
+	<select id="getGuarantor" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.OrderVO">
+		SELECT SAWON_ID ls_sawon_id, NVL (YEONDAE_2, 'N') ls_yeondae, 
+			   NVL (YEONDAE_3, 'N') is_yeondae3, NVL(CREDIT_LIMIT_AMT,0) ld_credit_limit_amt,
+			   pre_deposit pre_deposit
+		  FROM SALE.SALE0003
+		 WHERE CUST_ID = #{gs_empCode}
+	</select>	
+	
+	
+	<!-- 거래처의 여신 갯수 -->
+	<select id="getCreditCount" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.OrderVO">
+		SELECT COUNT (DISTINCT VOU_NO) ll_count
+		  FROM SALE.SALE0003
+		 WHERE CUST_ID = #{gs_empCode}
+	
+	</select>
+	
+	<!-- 거래처등록의 여신한도 -->
+	<select id="getCreditLimit" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.OrderVO">
+		SELECT NVL (MAX (CREDIT_LIMIT_AMT), 0) ld_credit_limit_amt
+		  FROM SALE.SALE0003
+		 WHERE VOU_NO = (SELECT VOU_NO
+		                   FROM SALE.SALE0003
+		                  WHERE CUST_ID = #{gs_empCode})
+	</select>
+	
+	
+	<!-- 사원정보 -->
+	<select id="getSawonInfo" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.OrderVO">
+		SELECT (SAWON_NM || ' ' || HP || ' ' || EMAIL) ls_sawon_info 
+		  FROM SALE.SALE0007
+		 WHERE SAWON_ID = #{ls_sawon_id}
+	
+	</select>
+	
+	<!-- 온라인주문상 여신/담보정보 -->
+	<select id="getCreditDamboInfo" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.OrderVO">
+		SELECT CUR_AMT + NVL (JASU_AMT, 0) LD_TOT_CREDIT,
+		       NVL (H.SALE_DAMBO_AMT, 0) LD_TOT_DAMBO,
+		       NVL (A.CREDIT_LIMIT_AMT, 0) LD_CREDIT_LIMIT_AMT
+		  FROM SALE.SALE0003 A,
+		       (SELECT   CUST_ID, SUM (AMT_SUM) + SUM (VAT_SUM) REQ_AMT_SUM
+		            FROM SALE_ON.SALE0203
+		           WHERE CUST_ID = #{gs_empCode} AND YMDT IS NULL
+		        GROUP BY CUST_ID) I,                                            --주문
+		       (SELECT   CUST_ID, SUM (BEFORE_AMT) BEFORE_AMT, SUM (MISU_AMT)
+		                                                                     MISU_AMT,
+		                 SUM (SU_AMT) SU_AMT
+		            FROM SALE.SALE0306_V
+		           WHERE CUST_ID = #{gs_empCode}
+		             AND YMD =
+		                    TO_DATE (TO_CHAR (SYSDATE, 'YYYY/MM') || '/01',
+		                             'YYYY/MM/DD'
+		                            )
+		        GROUP BY CUST_ID) F,                                            --잔고
+		       (SELECT   X.CUST_ID,
+		                 SUM (CASE
+		                         WHEN Y.BILL_GB IN
+		                                          ('010', '020', '030', '100', '900')
+		                            THEN AMT
+		                         ELSE 0
+		                      END
+		                     ) JASU_AMT
+		            FROM SALE.SALE0401_V X, SALE.SALE0402_V Y
+		           WHERE X.CUST_ID = #{gs_empCode}
+		             AND X.YMD = Y.YMD
+		             AND X.JUNPYO_NO = Y.JUNPYO_NO
+		             AND Y.END_YMD >= SYSDATE
+		        GROUP BY X.CUST_ID) G,                                          --수금
+		       (SELECT   X.CUST_ID, NVL (SUM (X.SALE_DAMBO_AMT), 0) SALE_DAMBO_AMT
+		            FROM SALE.SALE0404 X
+		           WHERE X.CUST_ID = #{gs_empCode}
+		             AND NVL (X.CHULGO_YMD(+), TO_DATE ('2999/01/01', 'YYYY/MM/DD')) =
+		                                          TO_DATE ('2999/01/01', 'YYYY/MM/DD')
+		        GROUP BY X.CUST_ID) H,                              --거래처별담보관리
+		       (SELECT CUST_ID,
+		                 NVL (BEFORE_AMT, 0)
+		               + NVL (MISU_AMT, 0)
+		               - NVL (SU_AMT, 0) CUR_AMT
+		          FROM (SELECT   CUST_ID, SUM (BEFORE_AMT) BEFORE_AMT,
+		                         SUM (MISU_AMT) MISU_AMT, SUM (SU_AMT) SU_AMT
+		                    FROM SALE.SALE0306
+		                   WHERE YMD = TO_DATE (TO_CHAR (SYSDATE, 'YYYY/MM') || '/01', 'YYYY/MM/DD')
+		                     AND CUST_ID = #{gs_empCode}
+		                GROUP BY CUST_ID)) J
+		 WHERE A.CUST_ID = #{gs_empCode}
+		   AND A.CUST_ID = F.CUST_ID(+)
+		   AND A.CUST_ID = G.CUST_ID(+)
+		   AND A.CUST_ID = H.CUST_ID(+)
+		   AND A.CUST_ID = I.CUST_ID(+)
+		   AND A.CUST_ID = J.CUST_ID(+)
+	</select>
+	
+	<!-- ERP상 주문 총여신 -->
+	<select id="getSaleTotCredit" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.OrderVO">
+		SELECT   NVL (F.BEFORE_AMT, 0)
+		       + NVL (F.MISU_AMT, 0)
+		       - NVL (F.SU_AMT, 0)
+		       + NVL (L.BILL_010_AMT, 0)
+		       + NVL (L.BILL_020_AMT, 0)
+		       + NVL (L.BILL_030_AMT, 0)
+		       + NVL (L.BILL_100_AMT, 0)
+		       + NVL (L.BILL_900_AMT, 0)
+		       + NVL (M.ON_SALE, 0) ld_sale_tot_credit
+
+		FROM   SALE.SALE0003 A,
+		       (SELECT   CUST_ID, SUM (BEFORE_AMT) BEFORE_AMT, SUM (MISU_AMT)
+		                                                                     MISU_AMT,
+		                 SUM (SU_AMT) SU_AMT
+		            FROM SALE.SALE0306
+		           WHERE YMD =
+		                    TO_DATE (TO_CHAR (SYSDATE, 'YYYY/MM') || '/01',
+		                             'YYYY/MM/DD'
+		                            )
+		             AND CUST_ID = #{gs_empCode}
+		        GROUP BY CUST_ID) F,                                      --거래처잔고
+		       (SELECT   X.CUST_ID CUST_ID,
+		                 NVL (SUM (DECODE (Y.BILL_GB, '010', Y.AMT)), 0) BILL_010_AMT,
+		                 NVL (SUM (DECODE (Y.BILL_GB, '020', Y.AMT)), 0) BILL_020_AMT,
+		                 NVL (SUM (DECODE (Y.BILL_GB, '025', Y.AMT)), 0) BILL_025_AMT,
+		                 NVL (SUM (DECODE (Y.BILL_GB, '030', Y.AMT)), 0) BILL_030_AMT,
+		                 NVL (SUM (DECODE (Y.BILL_GB, '035', Y.AMT)), 0) BILL_035_AMT,
+		                 NVL (SUM (DECODE (Y.BILL_GB, '040', Y.AMT)), 0) BILL_040_AMT,
+		                 NVL (SUM (DECODE (Y.BILL_GB, '100', Y.AMT)), 0) BILL_100_AMT,
+		                 NVL (SUM (DECODE (Y.BILL_GB, '900', Y.AMT)), 0) BILL_900_AMT
+		            FROM SALE.SALE0401 X, SALE.SALE0402 Y
+		           WHERE X.YMD = Y.YMD
+		             AND X.JUNPYO_NO = Y.JUNPYO_NO
+		             AND Y.END_YMD >= SYSDATE
+		        GROUP BY X.CUST_ID) L,                                        --수금
+		       (SELECT   CUST_ID, SUM (AMT_SUM + VAT_SUM) ON_SALE
+		            FROM SALE_ON.SALE0203
+		           WHERE CUST_ID = #{gs_empCode} AND RECEIPT_GB = '1'
+		        GROUP BY CUST_ID) M                                           --주문
+		 WHERE A.CUST_ID = #{gs_empCode}
+		   AND A.CUST_ID = F.CUST_ID(+)
+		   AND A.CUST_ID = L.CUST_ID(+)
+		   AND A.CUST_ID = M.CUST_ID(+)
+	
+	</select>
+	
+	
+	<!-- 출하중지 체크 -->
+	<select id="getBudongYn" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.OrderVO">
+	SELECT BUDONG_YN ls_budong_yn, EMAIL ls_email, ROOM_CNT ls_room_cnt
+	  FROM SALE.SALE0003
+	 WHERE CUST_ID = #{gs_empCode}
+	</select>
+	
+	<!-- [설명] (평균수량=직전3개월평균 * ' + LS_JUMUN_LIMIT + '%)(주문한도=평균수량-해당월)' -->
+	<select id="getJumunLimit" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.OrderVO">
+		SELECT TO_CHAR (JUMUN_LIMIT) ls_jumun_limit
+		  FROM SALE.SALE0003
+		 WHERE CUST_ID = #{gs_empCode}
+	</select>
+	
+		
+	<select id="getRcustBudongYn" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.OrderVO">
+		SELECT budong_yn
+		  FROM sale.sale0003
+		 WHERE cust_id = #{rcust_id}
+	</select>
+	
+	
+	<!-- 판매처 확인 -->
+	<select id="getStoreYn" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.OrderVO">
+		<![CDATA[
+		SELECT A.CUST_NM ls_cust_nm, A.SAWON_ID ls_sawon_id
+		  FROM SALE.SALE0003 A,
+		       (SELECT   RCUST_ID
+		            FROM SALE.SALE0405
+		           WHERE CUST_ID = #{gs_empCode}
+		        GROUP BY RCUST_ID) B
+		 WHERE A.CUST_ID = B.RCUST_ID AND A.CUST_GB1 <> '40' AND A.CUST_ID = #{rcust_id}
+		 ]]>
+	</select>
+	
+	
+	<!-- 판매처 사원정보	 -->
+	<select id="getStoreSawonInfo" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.OrderVO">
+		SELECT (SAWON_NM || ' ' || HP || ' ' || EMAIL) ls_sawon_info
+		  
+		  FROM SALE.SALE0007
+		 WHERE SAWON_ID = #{ls_sawon_id}
+	</select>
+	
+	
+	<!-- 판매처별 제품 목록 -->
+	<select id="getItemGridList" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.ItemVO">
+	
+		SELECT   *
+    		FROM (
+				<![CDATA[
+				SELECT A.CUST_ID CUST_ID, A.RCUST_ID RCUST_ID, A.ITEM_ID ITEM_ID,
+				       B.ITEM_NM ITEM_NM, B.SAUPJANG_CD SAUPJANG_CD, B.STANDARD STANDARD,
+				       TO_NUMBER ('') QTY, BAS_AMT BAS_AMT, ROUND (A.BAL_AMT / 1.1,
+				                                                   0) BAL_AMT,
+				       ROUND (A.BAL_AMT / 1.1, 0) - ROUND (A.YAK_AMT / 1.1, 0) DC_DANGA,
+				       NVL (B.CHUL_YN, 'N') LS_CHUL_YN, 100 - ROUND (A.BAL_AMT / A.BAS_AMT * 100) PERCENT, 0 DC_AMT,
+				       0 SUPPLY_NET, 0 SUPPLY_VAT, A.YMD CLOSE_DATE, 0 MAVG_QTY, 0 M_QTY,
+				       0 PSB_QTY
+				  FROM SALE.SALE0405 A, SALE.SALE0004 B
+				 WHERE A.ITEM_ID = B.ITEM_ID
+				   AND A.YMD >= TRUNC (SYSDATE)
+				   AND A.CUST_ID = #{gs_empCode}
+				   AND A.RCUST_ID = #{rcust_id}
+				   AND B.ITEM_GB1 <> '010'
+				   AND B.ITEM_ID NOT IN ('86001', '86002')
+				   AND B.JUMUN_VIEW_YN = 'Y'
+				UNION
+				SELECT A.CUST_ID CUST_ID, A.RCUST_ID RCUST_ID, A.ITEM_ID ITEM_ID,
+				       B.ITEM_NM ITEM_NM, B.SAUPJANG_CD SAUPJANG_CD, B.STANDARD STANDARD,
+				       TO_NUMBER ('') QTY, BAS_AMT BAS_AMT, ROUND (A.BAL_AMT / 1.1,0) BAL_AMT,
+				       ROUND (A.BAL_AMT / 1.1, 0) - ROUND (A.YAK_AMT / 1.1, 0) DC_DANGA,
+				       B.CHUL_YN, 100 - ROUND (A.BAL_AMT / A.BAS_AMT * 100) PERCENT, 0 DC_AMT,
+				       0 SUPPLY_NET, 0 SUPPLY_VAT, A.YMD CLOSE_DATE, 0 MAVG_QTY, 0 M_QTY,
+				       0 PSB_QTY
+				  FROM SALE.SALE0405 A, SALE.SALE0004 B
+				 WHERE A.ITEM_ID = B.ITEM_ID
+				   AND A.YMD >= TRUNC (SYSDATE)
+				   AND A.CUST_ID = #{gs_empCode}
+				   AND A.RCUST_ID = #{rcust_id}
+				   AND B.ITEM_GB1 <> '010'
+				   AND B.ITEM_ID NOT IN ('86001', '86002')
+				   AND B.ITEM_ID = '17837' 
+				 )
+				]]>
+		<if test="sidx !=''">
+			ORDER BY ${sidx} ${sord}
+		</if>
+		
+	</select>
+	
+	
+	<!-- 해당제품이 마약,향정일때 납품처의 향정마약여부 체크 -->
+	<select id="getItemYn" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.ItemVO">
+		SELECT ITEM_GB1 LS_ITEM_GB1
+		  FROM SALE.SALE0004
+		 WHERE ITEM_ID = #{ls_item_id}
+	</select>
+
+
+	<!-- 해당제품이 마약,향정일때 납품처의 향정마약여부 체크 -->
+	<select id="getItemGb" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.ItemVO">
+		SELECT 
+			<if test="ls_item_gb1 == '010'">
+			NVL(MAYAK, 'N') LS_YN
+			</if>
+			<if test="ls_item_gb1 == '020'">
+			NVL(HANGJUNG, 'N') LS_YN
+			</if>	
+		FROM SALE.SALE0003
+		WHERE CUST_ID = #{gs_empCode}
+	</select>
+	
+	
+	<!-- 거래처,주문일자,제품별 월평균, 해당월, 주문가능수량을 보여준다.	 -->
+	<select id="getQtyCnt" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.ItemVO">
+		<![CDATA[	
+		SELECT ROUND (A.QTY * B.JLIMIT) ll_mavg_qty, C.MQTY + D.MQTY ll_mqty,
+		       ROUND (A.QTY * B.JLIMIT) - (C.MQTY + D.MQTY) ll_psb_qty
+
+		  FROM (SELECT ROUND ((NVL (SUM (B.QTY), 0) / 3)) QTY
+		          FROM SALE.SALE0203 A, SALE.SALE0204 B
+		         WHERE A.RCUST_ID = #{rcust_id}
+                   AND A.CUST_ID = #{gs_empCode}
+		           AND A.YMD < TO_DATE (SUBSTR (#{ls_ymd}, 1, 6) || '01')
+		           AND A.YMD >= ADD_MONTHS (TO_DATE (SUBSTR (#{ls_ymd}, 1, 6) || '01'), -3)
+		           AND A.GUMAE_NO = B.GUMAE_NO
+		           AND B.ITEM_ID = #{ls_item_id}) A,
+		       (SELECT (JUMUN_LIMIT / 100) JLIMIT
+		          FROM SALE.SALE0003
+		         WHERE CUST_ID = #{rcust_id}) B,
+		       (SELECT NVL (SUM (B.QTY), 0) MQTY
+		          FROM SALE.SALE0203 A, SALE.SALE0204 B
+		         WHERE A.RCUST_ID = #{rcust_id}
+                   AND A.CUST_ID = #{gs_empCode}
+		           AND A.YMD >= TO_DATE (SUBSTR (#{ls_ymd}, 1, 6) || '01')
+		           AND A.YMD <= LAST_DAY (SUBSTR (#{ls_ymd}, 1, 6) || '01')
+		           AND A.GUMAE_NO = B.GUMAE_NO
+		           AND B.ITEM_ID = #{ls_item_id}) C,
+		       (SELECT NVL (SUM (B.QTY), 0) MQTY
+		          FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B
+		         WHERE A.RCUST_ID = #{rcust_id}
+                   AND A.CUST_ID = #{gs_empCode}
+		           AND A.YMD >= TO_DATE (SUBSTR (#{ls_ymd}, 1, 6) || '01')
+		           AND A.YMD <= LAST_DAY (SUBSTR (#{ls_ymd}, 1, 6) || '01')
+		           AND A.GUMAE_NO = B.GUMAE_NO
+		           AND A.RECEIPT_GB = '1'                                     --접수
+		           AND B.ITEM_ID = #{ls_item_id})D
+		]]>
+	</select>
+	
+	<!-- 제품체크 -->
+	<select id="getItemChk" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.ItemVO">
+		SELECT NVL (CHUL_YN, 'N') ls_chul_yn,
+		       NVL (USE_YN, 'N') ls_use_yn                
+		  FROM SALE.SALE0004
+		 WHERE ITEM_ID = #{ls_item_cd}
+ 
+	</select>
+	
+	
+	<!-- 창고재고 -->
+	<select id="getJaego" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.ItemVO">
+		SELECT   NVL (BEFORE_QTYS, 0)
+		       + NVL (IPGO_QTYS, 0)
+		       - NVL (CHULGO_QTYS, 0)
+		       - NVL (CHULGO_QTYST, 0)
+		       + NVL (BANPUM_QTYS, 0)
+		       + NVL (CONTROL_QTYS, 0) ld_jaego_qty
+		  FROM SALE.SALE0305
+		 WHERE YMD = (SUBSTR (#{ldt_jaego}, 1, 6) || '01') AND ITEM_ID = #{ls_item_cd} AND STORE_LOC = '01'
+ 
+	</select>
+	
+	<!-- 창고재고 : 제조번호별 재고의 합계 -->
+	<select id="getInvjaego" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.ItemVO">
+		SELECT NVL (SUM (  NVL (IPGO_QTYS, 0)
+		                - NVL (CHULGO_QTYS, 0)
+		                - NVL (CHULGO_QTYST, 0)
+		                + NVL (BANPUM_QTYS, 0)
+		               ),
+		           0
+		          ) ld_invjaego_qty
+		 FROM SALE.SALE0305_1
+		WHERE ITEM_ID = #{ls_item_cd} AND STORE_LOC = '01'
+	</select>
+	
+	<!-- 개시일자부터 3개월간은 주문수량 통과 -->
+	<select id="getLiCnt" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.ItemVO">
+		SELECT COUNT (*) li_cnt
+		  FROM SALE.SALE0003
+		 WHERE CUST_ID = #{ls_rcust_id}
+		   AND #{ldt_jaego} BETWEEN START_YMD AND ADD_MONTHS (START_YMD, 3)    
+	</select>
+	
+
+	<!-- 주문번호 생성 프로시저 -->
+	<parameterMap type="hashmap" id="itemParam">
+		<parameter property="tableType" jdbcType="VARCHAR" javaType="string" mode="IN" />
+		<parameter property="ldt_req_date" jdbcType="VARCHAR" javaType="string" mode="IN" />
+		<parameter property="ll_max" jdbcType="INTEGER" javaType="string" mode="OUT" />
+	</parameterMap>
+	<select id="getProcedureCall" statementType="CALLABLE" parameterMap="itemParam">
+		{call SALE.SP_SYS100C_MAX_VALUE( ?, ?, null, null, null, null,?)}
+	</select>
+	
+	
+	<!-- SALE_ON 주문 DETAIL 생성 -->
+	<insert id="insertDetailOrder" parameterType="com.hanaph.saleon.order.vo.ItemVO">
+		
+		
+		INSERT INTO SALE_ON.SALE0204
+		            (YMD, GUMAE_NO, INPUT_SEQ, ITEM_ID,
+		             QTY, DANGA, AMT, VAT,
+		             RATE, DC_AMT, DC_DANGA, REQ_QTY
+		            )
+		     VALUES (#{ldt_req_date}, #{ls_gumae_no}, #{ls_input_seq}, #{item_id},
+		             #{qty}, #{bal_amt}, #{supply_net}, #{supply_vat},
+		             #{percent}, #{dc_amt}, #{dc_danga}, #{qty}
+		            )
+	</insert>
+
+
+	<!-- SALE_ON 주문 MASTER 생성	 -->
+	<insert id="insertMasterOrder" parameterType="com.hanaph.saleon.order.vo.ItemVO">
+		INSERT INTO SALE_ON.SALE0203
+		            (GUMAE_NO, GUMAE_GB, YMD, SAWON_ID, CUST_ID,
+		             RSAWON_ID, RCUST_ID, GYULJAE_GB, TAX_TYPE, DECIMAL_PROC,
+		             AMT_SUM, VAT_SUM, BIGO, GUBUN, ACCEPT_YN,
+		             LIMIT_YN, INPUT_YMD, SLIP_GB, RECEIPT_GB, PDATE, PBIGO
+		            )
+		     VALUES (#{ls_gumae_no}, '01', #{ldt_req_date}, #{ls_sawon_id}, #{gs_empCode},
+		             #{ls_rsawon_id}, #{ls_rcust_cd}, '01', '01', '01',
+		             #{ld_supply_net_sum}, #{ld_supply_vat_sum}, #{ls_bigo}, '01', 'Y',
+		             #{ls_limit_yn}, sysdate, '1', '1', #{ls_pro_date}, #{ls_pro_bigo}
+		            )	
+	</insert>
+	
+	
+	<!-- 재고 변경 ::가출고 ::온라인주문용출고수량	 -->
+	<update id="updateChulgoQty" parameterType="com.hanaph.saleon.order.vo.ItemVO">
+		UPDATE SALE.SALE0305
+		   SET CHULGO_QTYST = NVL (CHULGO_QTYST, 0) + (#{qty})
+		 WHERE YMD = TO_DATE (SUBSTR (#{ldt_req_date}, 1, 6) || '01') AND ITEM_ID = #{item_id} AND STORE_LOC = '01'
+	</update>
+	
+	<!-- 수정화면 주문master grid -->
+	<select id="getMasterGridList" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.ItemVO">
+		SELECT A.RCUST_ID rcust_id, B.CUST_NM rcust_nm, 
+			   (   SUBSTR (a.gumae_no, 1, 4)
+		        || '-'
+		        || SUBSTR (a.gumae_no, 5, 4)
+		        || '-'
+		        || SUBSTR (a.gumae_no, 9, 4)
+		       ) gumae_no,
+			   TO_CHAR(A.YMD,'YYYY-MM-DD') ymd,
+		       NVL2 (A.GUMAE_GB, '일반매출', '        ') AS GUMAE_GB ,
+		       CASE
+		          WHEN A.RECEIPT_GB = '1'
+		             THEN '접수'
+		          WHEN A.RECEIPT_GB = '2'
+		             THEN '승인'
+		          WHEN A.RECEIPT_GB = '3'
+		             THEN '반려'
+		          ELSE '    '
+		       END AS STATUS,
+		       A.GUMAE_NOT AS APP_NO, A.BIGO, A.RECEIPT_GB, A.SLIP_GB
+		  FROM SALE_ON.SALE0203 A, SALE.SALE0003 B
+		 WHERE A.RCUST_ID = B.CUST_ID
+		   AND A.RECEIPT_GB = '1'
+		   AND A.YMD BETWEEN #{fr_date} AND #{to_date}
+		   AND A.CUST_ID = #{gs_empCode}
+		<if test="rcust_id != ''">
+		   AND A.RCUST_ID LIKE '%' || #{rcust_id} || '%'
+	   </if>
+	   
+		<if test="sidx != ''">
+			ORDER BY ${sidx} ${sord}
+		</if>
+	   
+	   
+	</select>
+	
+	<!-- 수정화면 주문detail grid	 -->
+	<select id="getDetailGridList" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.ItemVO">
+		SELECT A.YMD YMD, A.GUMAE_NO GUMAE_NO, A.ITEM_ID ITEM_ID,
+		       A.INPUT_SEQ INPUT_SEQ, B.ITEM_NM ITEM_NM, A.QTY QTY,
+		       A.DANGA DANGA, A.AMT AMT, A.VAT VAT,
+		       A.AMT + A.VAT TOT_AMT, A.AMT AMEND_AMT, A.VAT AMEND_VAT, A.RATE RATE,
+		       A.DC_AMT DC_AMT, A.DC_QTY DC_QTY, A.DC_DANGA DC_DANGA,
+		       B.STANDARD STANDARD, B.UNIT UNIT, A.AMT + A.VAT AMEND_TOT_AMT,
+		       A.REQ_QTY REQ_QTY
+		  FROM SALE_ON.SALE0204 A, SALE.SALE0004 B
+		 WHERE A.ITEM_ID = B.ITEM_ID AND A.GUMAE_NO = #{gumae_no} AND A.YMD = #{ymd}
+		<if test="sidx != ''">
+			ORDER BY ${sidx} ${sord}
+		</if>
+	</select>
+	
+	
+	<select id="getBasDanga" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.ItemVO">
+		SELECT NVL(BAS_AMT, 0) BAS_AMT
+		  FROM SALE.SALE0405
+		 WHERE CUST_ID = #{ls_rcust_id} AND RCUST_ID = #{ls_rcust_id}
+		       AND ITEM_ID = #{ls_item_id}
+	</select>
+	
+	<!-- 제품 승인 체크 -->
+	<select id="getReceiptChk" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.ItemVO">
+		SELECT receipt_gb ls_receipt_gb
+		  FROM SALE_ON.sale0203
+		 WHERE gumae_no = #{ls_gumae_no}
+	</select>
+	
+	
+	<!-- SALE_ON 주문 MASTER 수정	 -->
+	<update id="updateMasterOrder" parameterType="com.hanaph.saleon.order.vo.ItemVO">
+		UPDATE SALE_ON.SALE0203
+		   SET BIGO = #{ls_bigo},
+		     LIMIT_YN = #{ls_limit_yn},
+	    	 AMT_SUM = #{ld_amt_sum},
+	    	 VAT_SUM = #{ld_vat_sum}
+		 WHERE GUMAE_NO = #{ls_gumae_no}	
+	</update>
+	
+	<!-- SALE_ON 주문 MASTER 금액 수정	 -->
+	<update id="updateMasterAmt" parameterType="com.hanaph.saleon.order.vo.ItemVO">
+		UPDATE SALE_ON.SALE0203 
+			SET (AMT_SUM, VAT_SUM) = (SELECT SUM(AMT) AMT_SUM, SUM(VAT) VAT_SUM FROM SALE_ON.SALE0204 WHERE GUMAE_NO = #{ls_gumae_no})
+		WHERE  GUMAE_NO = #{ls_gumae_no}
+	</update>
+	
+	<!-- SALE_ON 주문 DETAIL 수정	 -->
+	<update id="updateDetailOrder" parameterType="com.hanaph.saleon.order.vo.ItemVO">
+	UPDATE SALE_ON.SALE0204
+		   SET QTY = #{amend_qty},
+		       AMT = #{amend_amt},
+		       VAT = #{amend_vat},
+		       DC_AMT = #{dc_amt},
+		       REQ_QTY = #{amend_qty}
+		 WHERE YMD = #{ldt_req_date}
+		   AND GUMAE_NO = #{ls_gumae_no}
+		   AND INPUT_SEQ = #{input_seq}
+		   AND ITEM_ID = #{item_id}
+	</update>
+	
+	<!-- SALE_ON 주문 MASTER 삭제 -->
+	<delete id="deleteMasterOrder">
+		DELETE FROM SALE_ON.SALE0203
+	    	  WHERE GUMAE_NO = #{ls_gumae_no}
+	</delete>
+	
+	<!-- SALE_ON 주문 DETAIL 삭제 -->
+	<delete id="deleteDetailOrder">
+		DELETE FROM SALE_ON.SALE0204
+		      WHERE YMD = #{ldt_req_date}
+		        AND GUMAE_NO = #{ls_gumae_no}
+		        AND INPUT_SEQ = #{input_seq}
+		        AND ITEM_ID = #{item_id}
+	</delete>
+	
+	<select id="getOrderStatusGridList" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.ItemVO">
+		SELECT A.RCUST_ID rcust_id, B.CUST_NM rcust_nm, A.GUMAE_NO gumae_no, TO_CHAR(A.YMD,'YYYY-MM-DD') ymd,
+		       NVL2 (A.GUMAE_GB, '일반매출', '        ') AS gumae_gb,
+		       CASE
+		          WHEN A.RECEIPT_GB = '1'
+		             THEN '접수'
+		          WHEN A.RECEIPT_GB = '2'
+		             THEN '승인'
+		          WHEN A.RECEIPT_GB = '3'
+		             THEN '반려'
+		          ELSE '    '
+		       END AS status,
+		       TO_CHAR(A.YMDT,'YYYY-MM-DD') AS app_ymd, A.GUMAE_NOT AS app_no,
+		       CASE
+		          WHEN A.RECEIPT_GB = '1'
+		             THEN A.BIGO
+		          WHEN A.RECEIPT_GB = '2'
+		             THEN A.RETURN_DESC
+		          WHEN A.RECEIPT_GB = '3'
+		             THEN A.RETURN_DESC
+		          ELSE '    '
+		       END AS bigo,
+		       A.SLIP_GB,
+		       A.PBIGO
+		  FROM SALE_ON.SALE0203 A, SALE.SALE0003 B
+		 WHERE A.RCUST_ID = B.CUST_ID
+		   AND A.YMD BETWEEN #{fr_date} AND #{to_date}
+		   AND A.CUST_ID = #{gs_empCode}
+			<if test="receipt_gb != null">
+			    AND A.RECEIPT_GB IN 
+			    <foreach item="receipt_gb" collection="receipt_gb" open="(" separator="," close=")">
+			        #{receipt_gb}
+				</foreach>
+			</if>
+		<if test="sidx != ''">
+			ORDER BY ${sidx} ${sord}
+		</if>
+
+	</select>
+	
+	<select id="getRateDay" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.OrderVO">
+	SELECT CONTROL_RATE_DAY,
+	       SALE.F_RATE_DAY_BEFOREMONTH(TO_CHAR (ADD_MONTHS (SYSDATE, -1), 'yyyymm'), #{gs_empCode}) AS rate_day
+	  FROM SALE.SALE0003
+	 WHERE CUST_ID = #{gs_empCode}
+	</select>
+	
+	<select id="getJupsuAmt" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.OrderVO">
+	SELECT SUM(AMT_SUM) + SUM(VAT_SUM) AS jupsu_amt
+	  FROM SALE_ON.SALE0203
+     WHERE CUST_ID = #{gs_empCode}
+	   AND RECEIPT_GB  = '1'
+	   AND ACCEPT_YN  = 'Y' 
+	</select>
+	
+</mapper>
+	

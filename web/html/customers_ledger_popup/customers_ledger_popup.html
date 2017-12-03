@@ -1,0 +1,565 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko" lang="ko">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title></title>
+<meta http-equiv="imagetoolbar" content="no" />
+<style type="text/css">
+/* html, body {height:100%;} */
+body {margin:0; padding:0; font-family:Dotum, '돋움', verdana, sans-serif; color:#000; font-size:11px; /* background:url('logo.gif') no-repeat center 50%; */}
+form, div, p, h1, h2, h3, h4, h5, h6, dl, dt, dd, ul, ol, li, blockquote, th, td {margin:0; padding:0; border:0 none;}
+img {border:0 none;}
+table {border-collapse:collapse; table-layout:fixed; margin:0; padding:0; border:0;}
+
+table.header {clear:both; width:100%;}
+table.header td {padding:4px 5px 2px;}
+table.header td.subject {font-weight:bold; font-size:13px; text-decoration:underline; text-align:center;}
+table.header td.center {text-align:center;}
+table.header td.right {text-align:right;}
+table.header td.bold {font-weight:bold;}
+
+table.list {clear:both; margin:15px 0 30px; width:100%; border-bottom:3px solid #000;}
+table.list th {padding:5px 5px 4px; border-top:3px solid #000; border-bottom:3px solid #000; background-color:#eee; border-right:2px solid #fff;}
+table.list td {text-align:right; padding:4px 5px 2px; line-height:1.4; white-space:normal; word-wrap:break-word;}
+table.list td span {display:inline-block; margin-right:8px;}
+table.list td.center {text-align:center;}
+table.list td.left {text-align:left;}
+table.list td.bold {font-weight:bold;}
+table.list tr.mtotal td {border-top:1px solid #000;}
+table.list tr.mtotal td.noline {border-top:0 none;}
+
+table.list th.last, 
+table.list td.last {border-right:0 none;}
+p.bg_logo {position:fixed; z-index:-1; text-align:center;}
+p.bg_logo img {width:1020px; height:717px; text-align:center; margin:0 auto;}
+p.print_btn {position:absolute; top:15px; right:10px;}
+#wrap {margin-top:10px;}
+
+@media print {
+	@page {size:landscape 29.7cm 21cm; margin:10px 10px 0 10px;}
+	body {font-size:9px; font-family:Gulim, '굴림', verdana, sans-serif;}
+	#wrap {page:a4sheet; /* page-break-after:always; */ margin-top:0;}
+	table.header td.subject {font-size:13px;}
+	table.list {margin:15px 0 0;}
+	table.list th {font-size:10px; background-color:#eee;}
+	p.print_btn {display:none;}
+	p.bg_logo img {width:976px; height:630px; text-align:center; margin:0 auto;}
+}
+</style>
+</head>
+<body>
+<div id="wrap">
+	<p class="bg_logo"><img src="logo.gif" alt="하나제약주식회사" /></p>
+	<!-- start header -->
+	<table class="header">
+	<colgroup>
+		<col style="width:20%" />
+		<col style="width:19%" />
+		<col />
+		<col style="width:21%" />
+		<col style="width:15%" />
+	</colgroup>
+	<tr>
+		<td class="subject" colspan="5">거 래 처 원 장</td>
+	</tr>
+	<tr>
+		<td class="center bold" colspan="5">조회기간: 2015년 01월 01일 ~ 2015년 02월 02일</td>
+	</tr>
+	<tr>
+		<td colspan="4" class="bold">한솔약국 (3001957)</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td>대표자 : <strong>윤남순</strong></td>
+		<td>담당자 : 최건영</td>
+		<td>사업자번호 : 113-05-533394</td>
+		<td>전화번호 : 02-739-3307</td>
+		<td>DATE : 2015-02-04</td>
+	</tr>
+	</table>
+	<!-- end header -->
+
+	<!-- start 일자별 목록 테이블 -->
+	<table class="list">
+	<colgroup>
+		<col style="width:8%;" />
+		<col style="width:7%;" />
+		<col style="width:5%;" />
+		<col style="width:11%;" />
+		<col style="width:5%;" />
+		<col style="width:4%;" />
+		<col style="width:6%;" />
+		<col style="width:7%;" />
+		<col style="width:6%;" />
+		<col style="width:8%;" />
+		<col style="width:8%;" />
+		<col style="width:8%;" />
+		<col style="width:6%;" />
+		<col />
+	</colgroup>
+	<thead>
+	<tr>
+		<th>일자</th>
+		<th colspan="2">납품처</th>
+		<th>품목</th>
+		<th>단위</th>
+		<th>수량</th>
+		<th>단가</th>
+		<th>공급가액</th>
+		<th>세액</th>
+		<th>합계금액</th>
+		<th>수금</th>
+		<th>잔액</th>
+		<th>매출할인</th>
+		<th class="last">비고</th>
+	</tr>
+	</thead>
+	<tbody>
+	<tr>
+		<td class="center">2015/01/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/01/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/01/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/01/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/01/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/01/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/01/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center">2014.12.29 수금분</td>
+	</tr>
+	<tr>
+		<td class="center">2015/01/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/01/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/01/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/01/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+
+	<!-- start 월 계 -->
+	<tr class="mtotal">
+		<td class="noline"></td>
+		<td class="noline"></td>
+		<td class="bold">월&nbsp; &nbsp;계</td>
+		<td></td>
+		<td></td>
+		<td></td>
+		<td></td>
+		<td>2,391,255</td>
+		<td>239,116</td>
+		<td>2,655,790</td>
+		<td>2,000,000</td>
+		<td>2,835,904</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<!-- end 월 계 -->
+
+	<tr>
+		<td class="center">2015/02/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>	
+	<tr>
+		<td class="center">2015/02/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/02/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/02/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/02/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/02/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/02/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center">2014.12.29 수금분</td>
+	</tr>	
+	<tr>
+		<td class="center">2015/02/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/02/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/02/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/02/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/02/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<tr>
+		<td class="center">2015/02/02</td>
+		<td colspan="2" class="left">한솔약국</td>
+		<td class="left"><span>17057</span>트라미펜정</td>
+		<td class="center">300T</td>
+		<td>2</td>
+		<td>57,000</td>
+		<td>284,091</td>
+		<td>10,363</td>
+		<td>312,000</td>
+		<td>2,000,000</td>
+		<td>2,375,104</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+
+	<!-- start 월 계 -->
+	<tr class="mtotal">
+		<td class="noline"></td>
+		<td class="noline"></td>
+		<td class="bold">월&nbsp; &nbsp;계</td>
+		<td></td>
+		<td></td>
+		<td></td>
+		<td></td>
+		<td>2,391,255</td>
+		<td>239,116</td>
+		<td>2,655,790</td>
+		<td>2,000,000</td>
+		<td>2,835,904</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<!-- end 월 계 -->
+
+	<!-- start 소 계 -->
+	<tr class="mtotal">
+		<td class="noline"></td>
+		<td class="noline"></td>
+		<td class="bold">소&nbsp; &nbsp;계</td>
+		<td></td>
+		<td></td>
+		<td></td>
+		<td></td>
+		<td>2,391,255</td>
+		<td>239,116</td>
+		<td>2,655,790</td>
+		<td>2,000,000</td>
+		<td>2,835,904</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<!-- end 소 계 -->
+
+	<!-- start 합 계 -->
+	<tr class="mtotal">
+		<td class="noline"></td>
+		<td class="noline"></td>
+		<td class="bold">합&nbsp; &nbsp;계</td>
+		<td></td>
+		<td></td>
+		<td></td>
+		<td></td>
+		<td>2,391,255</td>
+		<td>239,116</td>
+		<td>2,655,790</td>
+		<td>2,000,000</td>
+		<td>2,835,904</td>
+		<td></td>
+		<td class="last center"></td>
+	</tr>
+	<!-- end 합 계 -->
+
+	</tbody>
+	</table>
+	<!-- end 일자별 목록 테이블 -->
+</div>
+
+<!-- 임시 인쇄하기 버튼 -->
+<p class="print_btn"><input type="button" value="인쇄하기" onclick="window.print();" /></p>
+
+</body>
+</html>

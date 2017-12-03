@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : mgmt_program.xml      
+  * @메뉴명 : MANAGE > 프로그램 등록관리      
+  * @최초작성일 : 2015/01/16            
+  * @author : 김재갑                  
+  * @수정내역 :	
+ -->
+<mapper namespace="mgmt_program"> 
+	
+	<select id="getMenuList" parameterType="hashmap" resultType="com.hanaph.saleon.mgmt.vo.MgmtProgramVO">
+		SELECT  
+			A.PGM_NO
+	        ,A.PGM_ID          
+	        ,A.PGM_NAME        
+	        ,A.PGM_KIND_CODE   
+	        ,A.PGM_USE_YN      
+	        ,A.MENU_USE_YN     
+	        ,A.PARENT_PGM      
+	        ,A.SORT_ORDER      
+	        ,A.PICTURE         
+	        ,A.SELECT_PICTURE  
+	    FROM SALE_ON.PF_PGM_MST_DEV A
+	    WHERE A.PGM_KIND_CODE IN('P','M')
+	    <if test="type != null and type.equals('IN_USE')">
+			AND MENU_USE_YN = #{menuUseYn}
+		</if>
+		CONNECT BY PRIOR A.PGM_NO = DECODE(A.PGM_NO, A.PARENT_PGM, NULL, A.PARENT_PGM)
+	     	START WITH A.PGM_NO = #{topCode}  
+		ORDER SIBLINGS BY A.SORT_ORDER ASC, A.PGM_NO ASC
+	</select>
+	
+	<select id="getRoleMenuList" parameterType="hashmap" resultType="com.hanaph.saleon.mgmt.vo.MgmtProgramVO">
+		SELECT DISTINCT B.PGM_NO, B.PARENT_PGM, B.PGM_NAME, B.PGM_ID
+           FROM SALE_ON.PF_PGM_ROLE_DEV A, SALE_ON.PF_PGM_MST_DEV B
+          WHERE A.PGM_NO = B.PGM_NO
+            AND B.PGM_USE_YN = #{pgmUseYn}
+            AND B.MENU_USE_YN = #{menuUseYn}
+            AND B.PGM_KIND_CODE IN('P','M')
+            AND A.ROLE_NO = #{roleNo}
+       ORDER BY PGM_NO ASC
+	</select>
+	
+	<select id="detailProgramInfo" parameterType="hashmap" resultType="com.hanaph.saleon.mgmt.vo.MgmtProgramVO">
+		SELECT PGM_NO, PGM_ID, PGM_NAME, PGM_KIND_CODE, PGM_USE_YN, MENU_USE_YN,
+		       PARENT_PGM, SORT_ORDER, PICTURE, SELECT_PICTURE
+		  FROM SALE_ON.PF_PGM_MST_DEV
+		 WHERE PGM_NO = #{pgmNo}
+		   AND PGM_KIND_CODE IN('P','M')
+	</select>
+
+	<select id="getProgramSortNum" parameterType="hashmap" resultType="com.hanaph.saleon.mgmt.vo.MgmtProgramVO">
+		SELECT MAX(SORT_ORDER)+1 AS MAX_SORT FROM SALE_ON.PF_PGM_MST_DEV WHERE PARENT_PGM = #{pgmNo}
+	</select>
+	
+	<insert id="insertProgram" parameterType="com.hanaph.saleon.mgmt.vo.MgmtProgramVO">
+		<selectKey keyProperty="pgm_no" resultType="String" order="BEFORE">
+    		SELECT LPAD(MAX(PGM_NO)+1, 5, '0')AS pgm_id FROM SALE_ON.PF_PGM_MST_DEV
+  		</selectKey>
+			INSERT INTO SALE_ON.PF_PGM_MST_DEV
+			            (PGM_NO, PGM_ID, PGM_NAME, PGM_KIND_CODE, PGM_USE_YN,
+			             MENU_USE_YN, PARENT_PGM, SORT_ORDER, PICTURE, SELECT_PICTURE)
+			     VALUES (#{pgm_no}, #{pgm_id}, #{pgm_name}, #{pgm_kind_code}, #{pgm_use_yn},
+			             #{menu_use_yn}, #{parent_pgm}, #{sort_order}, #{picture}, #{select_picture})  		
+	</insert>
+	
+	<update id="updateProgram" parameterType="com.hanaph.saleon.mgmt.vo.MgmtProgramVO">
+		UPDATE SALE_ON.PF_PGM_MST_DEV 
+		    SET PGM_ID = #{pgm_id}, 
+		    PGM_NAME = #{pgm_name}, 
+		    PGM_KIND_CODE = #{pgm_kind_code}, 
+		    PGM_USE_YN = #{pgm_use_yn},
+		    MENU_USE_YN = #{menu_use_yn}, 
+		    SORT_ORDER = #{sort_order}, 
+		    PICTURE = #{picture}, 
+		    SELECT_PICTURE = #{select_picture}
+		 WHERE PGM_NO = #{pgm_no}		
+	</update>
+	
+	<delete id="deleteProgram" parameterType="com.hanaph.saleon.mgmt.vo.MgmtProgramVO">
+		DELETE FROM SALE_ON.PF_PGM_MST_DEV WHERE PGM_NO = #{pgm_no}
+	</delete>
+	
+	<select id="getButtonList" parameterType="hashmap" resultType="com.hanaph.saleon.mgmt.vo.MgmtButtonVO">
+		SELECT PGM_NO, BTN_ID, NVL(BTN_USE_YN,'')AS BTN_USE_YN, NVL(BTN_NM,'')AS BTN_NM
+		  FROM SALE_ON.PF_PGM_BTN_DEV
+		 WHERE PGM_NO =	#{pgmNo}
+		 <if test="useYn != null and useYn.equals('Y')">
+		 	AND BTN_USE_YN = #{useYn}
+		 </if>
+		 ORDER BY ${sidx} ${sord}
+	</select>
+	
+	<select id="getButton" parameterType="com.hanaph.saleon.mgmt.vo.MgmtButtonVO" resultType="int">
+		SELECT COUNT(*)
+		  FROM SALE_ON.PF_PGM_BTN_DEV
+		 WHERE PGM_NO =	#{pgm_no} AND BTN_ID = #{btn_id}
+	</select>
+	
+	<insert id= "insertButton" parameterType="com.hanaph.saleon.mgmt.vo.MgmtButtonVO">
+		INSERT INTO SALE_ON.PF_PGM_BTN_DEV
+		            (PGM_NO, BTN_ID, BTN_USE_YN, BTN_NM)
+		     VALUES (#{pgm_no}, #{btn_id}, #{btn_use_yn}, #{btn_nm})		
+	</insert>
+	
+	<update id= "updateButton" parameterType="com.hanaph.saleon.mgmt.vo.MgmtButtonVO">
+		UPDATE SALE_ON.PF_PGM_BTN_DEV 
+			    SET
+			       BTN_ID = #{btn_id} 
+			      ,BTN_USE_YN = #{btn_use_yn} 
+			      ,BTN_NM = #{btn_nm}
+			 WHERE PGM_NO = #{pgm_no}
+			   AND BTN_ID = #{btn_ori_id}
+	</update>
+	
+	<update id= "updateRoleButton" parameterType="com.hanaph.saleon.mgmt.vo.MgmtButtonVO">
+		UPDATE SALE_ON.PF_PGM_ROLE_DEV
+		   SET USE_BTN = REPLACE (USE_BTN, #{btn_ori_id}, #{btn_id})
+		 WHERE PGM_NO = #{pgm_no}
+	</update>
+	
+	<delete id= "deleteButton" parameterType="com.hanaph.saleon.mgmt.vo.MgmtButtonVO">
+		DELETE FROM SALE_ON.PF_PGM_BTN_DEV WHERE PGM_NO = #{pgm_no} 
+		<if test="type != 'PROGRAM'">
+			AND BTN_ID = #{btn_id}
+		</if>
+	</delete>
+	
+	<delete id= "deleteRoleButton" parameterType="com.hanaph.saleon.mgmt.vo.MgmtButtonVO">
+		UPDATE SALE_ON.PF_PGM_ROLE_DEV
+		   SET USE_BTN = REPLACE (USE_BTN, #{btn_ori_id}, '')
+		 WHERE PGM_NO = #{pgm_no}
+	</delete>
+	
+	<select id="getUserPgmList" parameterType="hashmap" resultType="com.hanaph.saleon.mgmt.vo.MgmtProgramVO">
+		SELECT
+		        *
+		FROM
+		(SELECT DISTINCT A.PGM_NO              
+		        ,A.PGM_ID
+		        ,A.PGM_NAME
+		        ,A.PGM_KIND_CODE
+		        ,A.PICTURE
+		        ,A.SELECT_PICTURE
+		        ,A.SORT_ORDER
+		        ,A.PARENT_PGM
+		FROM  SALE_ON.PF_PGM_MST_DEV     A, 
+		      SALE_ON.PF_PGM_ROLE_DEV        B,
+		      SALE_ON.PF_USERROLE_DEV        C
+		WHERE C.EMP_CODE            = #{empCode}
+		    AND B.ROLE_NO                = C.ROLE_NO
+		    AND A.PGM_USE_YN         = 'Y'
+		    AND A.PGM_NO                = B.PGM_NO
+		    AND A.PGM_KIND_CODE IN('P','M') 
+		) A
+		CONNECT BY PRIOR A.PGM_NO = DECODE(A.PGM_NO, A.PARENT_PGM, NULL, A.PARENT_PGM)
+		START WITH A.PARENT_PGM         = #{topCode}  
+		ORDER SIBLINGS BY A.PARENT_PGM ASC,A.SORT_ORDER ASC
+	</select>
+	
+	<select id="getMenuAuthByUser" parameterType="string" resultType="com.hanaph.saleon.mgmt.vo.MgmtProgramVO">
+		SELECT A.PGM_NO, 
+		    MAX(A.PGM_ID) PGM_ID, 
+		    MAX(A.PGM_NAME) PGM_NAME,
+		    MAX(A.PGM_KIND_CODE) PGM_KIND_CODE,
+		    MAX(A.PGM_USE_YN) PGM_USE_YN,
+		    MAX(A.MENU_USE_YN) MENU_USE_YN,
+		    MAX(A.PARENT_PGM) PARENT_PGM, 
+		    MAX(A.SORT_ORDER) SORT_ORDER, 
+		    MAX(A.PICTURE) PICTURE, 
+		    MAX(A.SELECT_PICTURE) SELECT_PICTURE, 
+		    decode(substr(xmlagg(xmlelement(a,',' || B.USE_BTN)).extract('//text()'), 2), ',' , '', substr(xmlagg(xmlelement(a,',' || B.USE_BTN)).extract('//text()'), 2))  USE_BTN
+        FROM  SALE_ON.PF_PGM_MST_DEV     A, 
+              SALE_ON.PF_PGM_ROLE_DEV        B,
+              SALE_ON.PF_USERROLE_DEV        C
+        WHERE C.EMP_CODE            = #{emp_code}
+            AND B.ROLE_NO                = C.ROLE_NO
+            AND (A.PGM_USE_YN         = 'Y' OR A.MENU_USE_YN         = 'Y')
+            AND A.PGM_NO                = B.PGM_NO
+            AND A.PARENT_PGM !='ZZZZZ'
+            AND A.PGM_KIND_CODE IN('P','M')
+	    GROUP BY A.PGM_NO
+	    ORDER BY PARENT_PGM ASC,SORT_ORDER
+	</select>
+	
+	<select id="getBtnAuthInPgmByUser_old" parameterType="com.hanaph.saleon.mgmt.vo.MgmtProgramVO" resultType="com.hanaph.saleon.mgmt.vo.MgmtButtonVO">
+		SELECT A.PGM_NO, D.BTN_ID, MAX(D.BTN_NM) BTN_NM, 
+				decode(substr(xmlagg(xmlelement(a,',' || B.USE_BTN)).extract('//text()'), 2), ',' , '', substr(xmlagg(xmlelement(a,',' || B.USE_BTN)).extract('//text()'), 2))  USE_BTN         
+		FROM    SALE_ON.PF_PGM_MST_DEV     A, 
+		        SALE_ON.PF_PGM_ROLE_DEV        B,
+		        SALE_ON.PF_USERROLE_DEV        C,
+		        SALE_ON.PF_PGM_BTN_DEV         D
+		WHERE C.EMP_CODE            = #{emp_code}
+		  AND B.ROLE_NO                = C.ROLE_NO
+		  AND A.PGM_NO                = B.PGM_NO
+		  AND B.PGM_NO = D.PGM_NO
+		  AND D.PGM_NO = #{pgm_no}
+		  AND D.BTN_USE_YN = 'Y'
+		  AND A.PARENT_PGM != 'ZZZZZ'
+		  AND A.PGM_KIND_CODE IN('P','M')
+		  AND D.BTN_ID IN 
+		<foreach item="btn_id" collection="arrUseBtns" open="(" separator="," close=")">
+        	#{btn_id}
+  		</foreach>
+		GROUP BY A.PGM_NO, D.BTN_ID
+		ORDER BY D.BTN_ID
+	</select>
+	
+	<select id="getBtnAuthInPgmByUser" parameterType="com.hanaph.saleon.mgmt.vo.MgmtProgramVO" resultType="com.hanaph.saleon.mgmt.vo.MgmtButtonVO">
+		SELECT A.PGM_NO, D.BTN_ID, MAX(D.BTN_NM) BTN_NM, 
+			decode(substr(xmlagg(xmlelement(a,',' || B.USE_BTN)).extract('//text()'), 2), ',' , '', substr(xmlagg(xmlelement(a,',' || B.USE_BTN)).extract('//text()'), 2))   USE_BTN         
+		FROM    SALE_ON.PF_PGM_MST_DEV     A, 
+		        SALE_ON.PF_PGM_ROLE_DEV        B,
+		        SALE_ON.PF_USERROLE_DEV        C,
+		        SALE_ON.PF_PGM_BTN_DEV         D
+		WHERE C.EMP_CODE            = #{emp_code}
+		  AND B.ROLE_NO                = C.ROLE_NO
+		  AND A.PGM_NO                = B.PGM_NO
+		  AND B.PGM_NO = D.PGM_NO
+		  AND D.PGM_NO = #{pgm_no}
+		  AND D.BTN_USE_YN = 'Y'
+		  AND A.PARENT_PGM != 'ZZZZZ'
+		  AND A.PGM_KIND_CODE IN('P','M')
+		  AND D.BTN_ID LIKE #{use_btn}||'%'
+		GROUP BY A.PGM_NO, D.BTN_ID, D.BTN_NM
+		ORDER BY D.BTN_NM DESC
+	</select>
+	
+</mapper>

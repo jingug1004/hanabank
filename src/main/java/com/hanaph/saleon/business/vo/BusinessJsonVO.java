@@ -11,25 +11,25 @@ import java.util.List;
  * <pre>
  * Class Name : BusinessJsonVO.java
  * 설명 : 영업관리 공통 json VO
- * 
+ *
  * Modification Information
  *    수정일      수정자              수정 내용
  *  ------------ -------------- --------------------------------
  *  2014. 10. 24.      Beomjin          
  * </pre>
- * 
+ *
  * @version : 
  * @author  : Beomjin(@irush.co.kr)
  * @since   : 2014. 10. 24.
  */
 public class BusinessJsonVO {
-	
+
 	private int total; 			// jqGrid에 표시할 전체 페이지 수
 	private int page; 			// 현재 페이지
 	private int records; 		// 전체 레코드(row)수
 	private int result; 		// 결과 레코드(row)수
 	private String message;		// 결과 메시지
-	
+
 	private List<BusinessVO> rows; // list
 
 	/**

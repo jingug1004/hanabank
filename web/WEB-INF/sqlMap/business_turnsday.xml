@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : business_turnsday.xml      
+  * @메뉴명 : 회전일현황      
+  * @최초작성일 : 2014/10/22            
+  * @author : 윤범진                  
+  * @수정내역 :	
+ -->
+<mapper namespace="turnsday"> 
+	
+	<select id="getTurnsdayGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.TurnsdayVO">
+		SELECT TO_CHAR(A.YMD,'YYYYMMDD')  as  YMD
+		      ,A.DEAL_NO      as  DEAL_NO
+		      ,A.INPUT_SEQ    as  INPUT_SEQ
+		      ,A.CUST_ID      as  CUST_ID
+		      ,A.CUST_NM      as  CUST_NM
+		      ,A.RCUST_ID     as  RCUST_ID
+		      ,A.RCUST_NM     as  RCUST_NM
+		      ,A.ITEM_ID      as  ITEM_ID
+		      ,A.ITEM_NM      as  ITEM_NM
+		      ,A.STANDARD     as  STANDARD
+		      ,A.QTY          as  QTY
+		      ,A.DC_QTY       as  DC_QTY
+		      ,A.BAL_AMT      as  BAL_AMT
+		      ,A.QTY_YUL      as  QTY_YUL
+		      ,A.AMT          as  AMT
+		      ,A.YAK_AMT      as  YAK_AMT
+		      ,A.AMT_YUL      as  AMT_YUL
+		      ,A.ACT_SALE     as  ACT_SALE
+		      ,A.DANGA_CHA    as  DANGA_CHA
+		      ,A.HAL_AMT      as  HAL_AMT
+		      ,A.BOSANG_AMT   as  BOSANG_AMT
+		      ,A.BOSANG_YUL   as  BOSANG_YUL
+		      ,A.C_AMT        as  C_AMT
+		      ,A.C            as  C
+		      ,A.GC_AMT       as  GC_AMT
+		      ,A.GC           as  GC
+		      ,A.ETC_AMT      as  ETC_AMT
+		      ,A.ETC          as  ETC
+		      ,NVL(B.DC_EN_YN,'N')     as  DC_EN_YN
+      		  ,NVL(B.GC_EN_YN,'N')     as  GC_EN_YN
+		      ,B.BIGO         as  BIGO
+		      ,#{ad_fr_date} DATEF  
+		      ,#{ad_to_date} DATET    
+		  FROM SALE.SALE_TURNSDAY_BATCH A
+		      ,SALE.SALE0208 B
+		 WHERE A.DEAL_NO = B.DEAL_NO AND A.INPUT_SEQ = B.INPUT_SEQ AND A.YMD = B.YMD AND A.ITEM_ID = B.ITEM_ID
+		   AND A.YMD      BETWEEN 	TO_DATE(#{ad_fr_date},'YYYYMMDD') AND TO_DATE(#{ad_to_date},'YYYYMMDD') + 0.99999
+		   AND A.CUST_ID  LIKE    #{as_fr_cust,jdbcType=VARCHAR}||'%'
+		   AND A.RCUST_ID LIKE    #{as_fr_rcust,jdbcType=VARCHAR}||'%'
+		   AND NVL(B.DC_EN_YN,'N') LIKE #{dc_en_yn,jdbcType=VARCHAR}
+		   AND NVL(B.GC_EN_YN,'N') LIKE #{gc_en_yn,jdbcType=VARCHAR}
+	</select>
+	
+</mapper>
+	

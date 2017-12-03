@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : mgmt_role.xml      
+  * @메뉴명 : MANAGE > 권한 등록관리      
+  * @최초작성일 : 2015/01/16            
+  * @author : 김재갑                  
+  * @수정내역 :	
+ -->
+<mapper namespace="mgmt_role"> 
+	
+	<select id="getRoleList" parameterType="hashmap" resultType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+		SELECT TB1.ROLE_NO, TB1.ROLE_CAT_CODE, TB1.ROLE_NAME, TB1.DEPT_CODE,
+		       TB2.DEPT_NAME, TB1.EMP_CODE, TB3.EMP_NAME
+		  FROM (SELECT ROLE_NO,
+		               DECODE (A.ROLE_CAT_CODE,'01', '사용자','02', '실제조직','03', '가상조직',A.ROLE_CAT_CODE) AS ROLE_CAT_CODE,
+		               A.ROLE_NAME, A.DEPT_CODE, A.EMP_CODE
+		          FROM SALE_ON.PF_ROLE A) TB1,
+		       (SELECT DEPT_CODE, DEPT_NAME
+		          FROM (SELECT   DEPT_CODE, DEPT_NAME
+		                    FROM (SELECT CASE
+		                                    WHEN T2.SALE_DEPT_CD IS NULL
+		                                     OR T2.USE_YN = 'N'
+		                                       THEN T1.DEPT_CD
+		                                    ELSE T2.SALE_DEPT_CD
+		                                 END DEPT_CODE,
+		                                 CASE
+		                                    WHEN T2.DEPT_KO_NM IS NULL
+		                                     OR T2.USE_YN = 'N'
+		                                       THEN T1.DEPT_NM
+		                                    ELSE T2.DEPT_KO_NM
+		                                 END DEPT_NAME
+		                            FROM SALE.SALE0008 T1, HANAHR.HR_CO_DEPART_0 T2
+		                           WHERE T1.DEPT_CD = T2.SALE_DEPT_CD(+))
+		                GROUP BY DEPT_CODE, DEPT_NAME)) TB2,
+		       (SELECT EMP_CODE, EMP_NAME
+		          FROM (SELECT CUST_ID AS EMP_CODE, CUST_NM AS EMP_NAME
+		                  FROM SALE.SALE0003
+		                 WHERE CUST_ID LIKE '11%' 
+		                   AND USE_YN = 'Y'
+		                UNION
+		                SELECT A.SAWON_ID AS EMP_CODE, A.SAWON_NM AS EMP_NAME
+		                  FROM SALE.SALE0007 A, HANACOMM.CO_US_MEMBER_0 B
+		                 WHERE A.GUBUN = 'Y'
+		                   AND B.USE_YN = 'Y'
+		                   AND A.INSA_SAWON_ID = B.EMP_NO)) TB3
+		 WHERE TB1.DEPT_CODE = TB2.DEPT_CODE(+) AND TB1.EMP_CODE = TB3.EMP_CODE(+)
+		ORDER BY ${sidx} ${sord}		
+	</select>
+	
+	<select id="getRoleUserList" parameterType="hashmap" resultType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+        SELECT   A.ROLE_NO AS ROLE_NO, '' AS DEPT_CODE, '' AS DEPT_NAME,
+                 A.EMP_CODE AS EMP_CODE,
+                 B.CUST_NM AS EMP_NAME
+            FROM SALE_ON.PF_USERROLE_DEV A, SALE.SALE0003 B
+           WHERE A.EMP_CODE = B.CUST_ID
+             AND A.ROLE_NO = #{roleNo}
+             AND B.CUST_ID LIKE '11%' 
+             AND B.USE_YN = 'Y'
+             UNION 
+ 		SELECT ROLE_NO, DEPT_CODE, DEPT_NAME, EMP_CODE, EMP_NAME
+            FROM (
+                SELECT C.ROLE_NO, B.SAWON_ID AS EMP_CODE,
+                       B.SAWON_NM AS EMP_NAME, B.DEPT_CD
+                  FROM SALE.SALE0007 B, SALE_ON.PF_USERROLE_DEV C 
+                 WHERE B.GUBUN = 'Y'
+                   AND B.SAWON_ID = C.EMP_CODE
+                   AND C.ROLE_NO    = #{roleNo}) AA,
+               (SELECT DEPT_CODE, DEPT_NAME
+                  FROM (SELECT CASE
+                                  WHEN T2.SALE_DEPT_CD IS NULL OR T2.USE_YN = 'N'
+                                     THEN T1.DEPT_CD
+                                  ELSE T2.SALE_DEPT_CD
+                               END DEPT_CODE,
+                               CASE
+                                  WHEN T2.DEPT_KO_NM IS NULL OR T2.USE_YN = 'N' THEN T1.DEPT_NM
+                                  ELSE T2.DEPT_KO_NM
+                               END DEPT_NAME,
+                               T2.USE_YN
+                          FROM SALE.SALE0008 T1, HANAHR.HR_CO_DEPART_0 T2
+                         WHERE T1.DEPT_CD = T2.SALE_DEPT_CD(+))GROUP BY DEPT_CODE,DEPT_NAME) BB
+            WHERE AA.DEPT_CD = BB.DEPT_CODE(+)
+		ORDER BY ${sidx} ${sord}		
+	</select>
+	
+	<select id="getRoleProgramList" parameterType="hashmap" resultType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+		SELECT A.PGM_NO, B.PGM_NAME, B.PGM_ID, B.PGM_KIND_CODE, A.ROLE_NO, A.USE_BTN
+		  FROM SALE_ON.PF_PGM_ROLE_DEV A, SALE_ON.PF_PGM_MST_DEV B
+		 WHERE A.PGM_NO = B.PGM_NO AND B.PGM_USE_YN = #{pgmUseYn} AND A.ROLE_NO = #{roleNo}
+		   AND B.PGM_KIND_CODE IN('P','M')
+		 <if test="sidx != '' and sord != ''">
+		 	ORDER BY ${sidx} ${sord}
+		 </if>
+	</select>
+	
+	<select id="getRoleNum" resultType="string">
+		SELECT LPAD(MAX(ROLE_NO)+1, 5, '0')AS role_no FROM SALE_ON.PF_ROLE
+	</select>
+	
+	<insert id="insertRole" parameterType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+		INSERT INTO SALE_ON.PF_ROLE(ROLE_NO,ROLE_CAT_CODE,ROLE_NAME,DEPT_CODE,EMP_CODE)VALUES(#{newRoleNum},#{role_cat_code},#{role_name},#{dept_code},#{emp_code})
+	</insert>
+	
+	<update id="updateRole" parameterType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+		UPDATE SALE_ON.PF_ROLE 
+		   SET ROLE_CAT_CODE = #{role_cat_code}
+		      ,ROLE_NAME = #{role_name} 
+		      ,DEPT_CODE = #{dept_code}
+		      ,EMP_CODE = #{emp_code}
+		 WHERE ROLE_NO = #{role_no}		
+	</update>
+	
+	<insert id="insertRoleUserCopy" parameterType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+		INSERT INTO SALE_ON.PF_USERROLE_DEV
+		            (ROLE_NO, EMP_CODE)
+		   SELECT LPAD(${newRoleNum}, 5, '0'), EMP_CODE
+		     FROM SALE_ON.PF_USERROLE_DEV
+		    WHERE ROLE_NO = #{role_no}
+	</insert>
+	
+	<insert id="insertRoleProgramCopy" parameterType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+		INSERT INTO SALE_ON.PF_PGM_ROLE_DEV
+					(PGM_NO,ROLE_NO,USE_BTN)
+			SELECT PGM_NO, LPAD(${newRoleNum}, 5, '0'), USE_BTN FROM SALE_ON.PF_PGM_ROLE_DEV
+		     WHERE ROLE_NO = #{role_no}
+	</insert>
+	
+	<delete id="deleteRole" parameterType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+		DELETE FROM SALE_ON.PF_ROLE WHERE ROLE_NO = #{role_no}
+	</delete>
+	
+	<delete id="deleteRoleUserAll" parameterType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+		DELETE FROM SALE_ON.PF_USERROLE_DEV WHERE ROLE_NO = #{role_no}	
+	</delete>
+	
+	<delete id= "deleteRoleProgramAll" parameterType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+ 		DELETE FROM SALE_ON.PF_PGM_ROLE_DEV WHERE ROLE_NO = #{role_no}
+ 	</delete>
+	
+	<select id="getUserList" parameterType="hashmap" resultType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+		SELECT EMP_CODE, EMP_NAME, DEPT_CODE, DEPT_NAME FROM(
+			<if test="pageType != 'roleReg'">
+			SELECT   CUST_ID AS EMP_CODE, CUST_NM AS EMP_NAME, '' DEPT_CODE, '' DEPT_NAME
+			    FROM SALE.SALE0003
+			   WHERE CUST_ID LIKE '11%' 
+			     AND USE_YN = 'Y'
+			UNION
+			</if>
+			SELECT   EMP_CODE, EMP_NAME, DEPT_CODE, DEPT_NAME
+			    FROM (SELECT A.SAWON_ID AS EMP_CODE, A.SAWON_NM AS EMP_NAME, A.DEPT_CD
+			            FROM SALE.SALE0007 A, HANACOMM.CO_US_MEMBER_0 B
+			           WHERE A.GUBUN = 'Y' AND B.USE_YN = 'Y'
+			                 AND A.INSA_SAWON_ID = B.EMP_NO) AA,
+			         (SELECT   DEPT_CODE, DEPT_NAME
+			              FROM (SELECT CASE
+			                              WHEN T2.SALE_DEPT_CD IS NULL
+			                               OR T2.USE_YN = 'N'
+			                                 THEN T1.DEPT_CD
+			                              ELSE T2.SALE_DEPT_CD
+			                           END DEPT_CODE,
+			                           CASE
+			                              WHEN T2.DEPT_KO_NM IS NULL
+			                               OR T2.USE_YN = 'N'
+			                                 THEN T1.DEPT_NM
+			                              ELSE T2.DEPT_KO_NM
+			                           END DEPT_NAME,
+			                           T2.USE_YN
+			                      FROM SALE.SALE0008 T1, HANAHR.HR_CO_DEPART_0 T2
+			                     WHERE T1.DEPT_CD = T2.SALE_DEPT_CD(+))
+			          GROUP BY DEPT_CODE, DEPT_NAME) BB
+			   WHERE AA.DEPT_CD = BB.DEPT_CODE(+)
+			)
+		 <if test="selectedType != '' and selectedType == 'dept' and deptCode !='' or deptName !=''">
+		 	WHERE DEPT_CODE LIKE '%' || #{deptCode} || '%' AND DEPT_NAME LIKE '%' || #{deptName} || '%'
+		 </if>
+		 <if test="selectedType != '' and selectedType == 'emp' and empCode !='' or empName !=''">
+		 	WHERE EMP_CODE LIKE '%' || #{empCode} || '%' AND EMP_NAME LIKE '%' || #{empName} || '%'
+		 </if>
+		 <if test="sidx != '' and sord != ''">
+		 	ORDER BY ${sidx} ${sord}
+		 </if>
+	</select>
+	
+	<select id="getDeptList" parameterType="hashmap" resultType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+ 		SELECT DEPT_CODE,DEPT_NAME FROM(SELECT DEPT_CODE,DEPT_NAME FROM(
+             SELECT 
+                 CASE
+                  WHEN T2.SALE_DEPT_CD IS NULL OR T2.USE_YN = 'N' THEN T1.DEPT_CD
+                  ELSE T2.SALE_DEPT_CD
+                 END DEPT_CODE,
+                 CASE
+                  WHEN T2.DEPT_KO_NM IS NULL OR T2.USE_YN = 'N' THEN T1.DEPT_NM
+                  ELSE T2.DEPT_KO_NM
+                 END DEPT_NAME
+             FROM SALE.SALE0008 T1, HANAHR.HR_CO_DEPART_0 T2 
+             WHERE T1.DEPT_CD = T2.SALE_DEPT_CD(+))GROUP BY DEPT_CODE,DEPT_NAME)
+  		 <if test="deptCode !='' or deptName !=''">
+		 	  WHERE DEPT_CODE LIKE '%' || #{deptCode} || '%' AND DEPT_NAME LIKE '%' || #{deptName} || '%'
+		 </if>
+		 <if test="sidx != '' and sord != ''">
+		 	ORDER BY ${sidx} ${sord}
+		 </if>		
+	</select>
+	
+	<select id="getRoleUserCount" parameterType="hashmap" resultType="int">
+		SELECT COUNT(*) FROM SALE_ON.PF_USERROLE_DEV WHERE ROLE_NO = #{roleNo} AND EMP_CODE = #{empCode}
+ 	</select>
+	
+	<insert id="insertUserRole" parameterType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+		INSERT INTO SALE_ON.PF_USERROLE_DEV(ROLE_NO,EMP_CODE)VALUES(#{role_no},#{emp_code})		
+	</insert>
+	
+	<delete id="deleteUserRole" parameterType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+		DELETE SALE_ON.PF_USERROLE_DEV WHERE ROLE_NO = #{role_no} AND EMP_CODE = #{emp_code}	
+	</delete>
+	
+	<select id="getRoleDetail" parameterType="hashmap" resultType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+		SELECT A.PGM_NO, B.PGM_NAME, B.PGM_ID, A.ROLE_NO, A.USE_BTN
+		  FROM SALE_ON.PF_PGM_ROLE_DEV A, SALE_ON.PF_PGM_MST_DEV B
+		 WHERE A.PGM_NO = B.PGM_NO
+		   AND B.PGM_USE_YN = #{pgmUseYn}
+		   AND B.PGM_KIND_CODE IN('P','M')
+		   AND A.PGM_NO = #{pgmNo}
+		   AND ROLE_NO = #{roleNo}
+ 	</select>
+ 	
+ 	<update id="updateRoleDetail" parameterType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+ 		UPDATE SALE_ON.PF_PGM_ROLE_DEV SET USE_BTN = #{use_btn} WHERE PGM_NO = #{pgm_no} AND ROLE_NO = #{role_no}
+ 	</update>
+ 	
+ 	<insert id="insertRoleProgram" parameterType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+ 		INSERT INTO SALE_ON.PF_PGM_ROLE_DEV(PGM_NO,ROLE_NO,USE_BTN)VALUES(#{pgm_no},#{role_no},#{use_btn})
+ 	</insert>
+ 	
+ 	<delete id= "deleteRoleProgram" parameterType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+		DELETE FROM SALE_ON.PF_PGM_ROLE_DEV WHERE ROLE_NO = #{role_no} AND PGM_NO IN(SELECT  
+			A.PGM_NO 
+	    FROM SALE_ON.PF_PGM_MST_DEV A
+<!-- 	    	WHERE MENU_USE_YN = #{menu_use_yn} -->
+		CONNECT BY PRIOR A.PGM_NO = DECODE(A.PGM_NO, A.PARENT_PGM, NULL, A.PARENT_PGM)
+	     	START WITH A.PGM_NO = #{pgm_no})
+	</delete>
+	
+	<select id="getUserRoleList" parameterType="hashmap" resultType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+		SELECT     A.ROLE_NO                 AS ROLE_NO
+		          ,A.ROLE_CAT_CODE    AS ROLE_CAT_CODE
+		          ,A.ROLE_NAME            AS ROLE_NAME
+		FROM      SALE_ON.PF_ROLE                A,  SALE_ON.PF_USERROLE_DEV            B
+		WHERE     A.ROLE_NO        = B.ROLE_NO
+		AND  B.EMP_CODE        = #{emp_code}
+		ORDER BY ${sidx} ${sord}		
+ 	</select>
+ 	
+ 	<select id="getRoleParentProgramList" parameterType="hashmap" resultType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO">
+		SELECT     A.PGM_NO, A.PGM_ID, A.PGM_NAME, A.PGM_KIND_CODE, A.PGM_USE_YN,
+		           A.MENU_USE_YN, A.PARENT_PGM, A.SORT_ORDER, A.PICTURE,
+		           A.SELECT_PICTURE
+		      FROM SALE_ON.PF_PGM_MST_DEV A
+		       WHERE A.MENU_USE_YN = #{menu_use_yn}
+		         AND A.PGM_KIND_CODE IN('P','M')
+		CONNECT BY PRIOR A.PARENT_PGM =
+		                               DECODE (A.PARENT_PGM,
+		                                       A.PGM_NO, NULL,
+		                                       A.PGM_NO
+		                                      )
+		START WITH A.PGM_NO = #{pgm_no}		
+	</select>
+	
+	<select id="getRoleProgramCount" parameterType="com.hanaph.saleon.mgmt.vo.MgmtRoleVO" resultType="int">
+        SELECT COUNT(PGM_NO)
+          FROM SALE_ON.PF_PGM_ROLE_DEV 
+         WHERE PGM_NO = #{pgm_no}
+           AND ROLE_NO = #{role_no}	
+	</select>
+	
+</mapper>

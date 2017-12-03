@@ -8,6 +8,7 @@ package com.hanaph.saleon.business.service;
 import java.util.List;
 import java.util.Map;
 
+import com.hanaph.saleon.business.dao.CompanyCardMgmtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,13 +18,13 @@ import com.hanaph.saleon.business.vo.CompanyCardMgmtVO;
 import com.hanaph.saleon.common.utils.StringUtil;
 
 @Service(value="companyCardMgmtService")
-public class CompanyCardMgmtServiceImpl implements CompanyCardMgmtService{
+public class CompanyCardMgmtServiceImpl implements CompanyCardMgmtService {
 
 	@Autowired
 	private CompanyCardMgmtDAO companyCardMgmtDAO;
 	
 	/* (non-Javadoc)
-	 * @see com.hanaph.saleon.business.service.CompanyCardMgmtService#getCompanyCardMgmtInit(java.util.Map)
+	 * @see com.hanaph.saleon.business.dao.CompanyCardMgmtService#getCompanyCardMgmtInit(java.util.Map)
 	 */
 	@Override
 	public CompanyCardMgmtVO getCompanyCardMgmtInit(Map<String, String> paramMap) {
@@ -60,7 +61,7 @@ public class CompanyCardMgmtServiceImpl implements CompanyCardMgmtService{
 	}
 	
 	/* (non-Javadoc)
-	 * @see com.hanaph.saleon.business.service.CompanyCardMgmtService#getGaejungCodeList()
+	 * @see com.hanaph.saleon.business.dao.CompanyCardMgmtService#getGaejungCodeList()
 	 */
 	@Override
 	public List<CompanyCardMgmtVO> getGaejungCodeList() {
@@ -68,7 +69,7 @@ public class CompanyCardMgmtServiceImpl implements CompanyCardMgmtService{
 	}
 
 	/* (non-Javadoc)
-	 * @see com.hanaph.saleon.business.service.CompanyCardMgmtService#getCompanyCardHistoryGridList(java.util.Map)
+	 * @see com.hanaph.saleon.business.dao.CompanyCardMgmtService#getCompanyCardHistoryGridList(java.util.Map)
 	 */
 	@Override
 	public List<CompanyCardMgmtVO> getCompanyCardHistoryGridList(Map<String, String> paramMap) {
@@ -76,7 +77,7 @@ public class CompanyCardMgmtServiceImpl implements CompanyCardMgmtService{
 	}
 
 	/* (non-Javadoc)
-	 * @see com.hanaph.saleon.business.service.CompanyCardMgmtService#getCompanyCardHistoryGridTotalCount(java.util.Map)
+	 * @see com.hanaph.saleon.business.dao.CompanyCardMgmtService#getCompanyCardHistoryGridTotalCount(java.util.Map)
 	 */
 	@Override
 	public CompanyCardMgmtVO getCompanyCardHistoryGridTotalCount(Map<String, String> paramMap) {
@@ -84,7 +85,7 @@ public class CompanyCardMgmtServiceImpl implements CompanyCardMgmtService{
 	}
 
 	/* (non-Javadoc)
-	 * @see com.hanaph.saleon.business.service.CompanyCardMgmtService#updateCardUseDetail(java.util.Map)
+	 * @see com.hanaph.saleon.business.dao.CompanyCardMgmtService#updateCardUseDetail(java.util.Map)
 	 */
 	@Transactional
 	@Override

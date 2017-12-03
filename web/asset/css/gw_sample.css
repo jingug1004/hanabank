@@ -1,0 +1,15 @@
+@charset "utf-8";
+
+@import url('easyui.css');
+@import url('icon.css');
+@import url('default.css');
+
+#wrap {margin:30px;}
+
+.left_menu {float:left; width:130px; margin-right:20px; padding:20px 10px; background-color:#eee;}
+.left_menu li {line-height:1.8;}
+
+.tabs-panels .panel {height:796px;}
+.cont_wrap {padding:20px; line-height:1.8;}
+
+#sub_wrap {padding:20px;}

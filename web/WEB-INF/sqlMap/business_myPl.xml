@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org--DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : business_myPl.xml
+  * @메뉴명 : 영업관리 > myP/L
+  * @최초작성일 : 2014/10/28            
+  * @author : 우정아                  
+  * @수정내역 :	
+ -->
+<mapper namespace="mypl"> 
+	
+	<resultMap type="com.hanaph.saleon.business.vo.MyPlVO" id="MyPlVO">
+		<result property="item_id" column="ITEM_ID"/>
+		<result property="item_photo" column="ITEM_PHOTO" jdbcType="BLOB" javaType="byte[]" typeHandler="org.apache.ibatis.type.BlobTypeHandler"/>
+	</resultMap>
+	
+	
+	
+	<select id="getMyplGroupGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.MyPlVO">
+		SELECT SAWON_ID, PLGRP_NO, PLGRP_NM, COMMENTS, SORT_SEQ
+		  FROM SALE.SFA_MYPL_GROUP
+		 WHERE SAWON_ID = #{as_sawon_id}
+		<if test="sidx != ''">
+			ORDER BY ${sidx} ${sord}
+		</if>
+		 
+	</select>
+	
+	<!-- P/L Group seq 생성 프로시저 -->
+	<parameterMap type="hashmap" id="itemParam">
+		<parameter property="tableType" jdbcType="VARCHAR" javaType="string" mode="IN" />
+		<parameter property="gs_empCode" jdbcType="VARCHAR" javaType="string" mode="IN" />
+		<parameter property="ll_max" jdbcType="INTEGER" javaType="string" mode="OUT" />
+	</parameterMap>
+	<select id="getProcedureCall" statementType="CALLABLE" parameterMap="itemParam">
+		{call SALE.SP_SYS100C_MAX_VALUE( ?, ?, null, null, null, null,?)}
+	</select>
+	
+	
+	<insert id="insertPlGroup" parameterType="com.hanaph.saleon.business.vo.MyPlVO">
+		INSERT INTO SALE.SFA_MYPL_GROUP VALUES(#{gs_empCode},#{plgrp_no},#{plgrp_nm},#{comments},#{sort_seq})
+	</insert>
+	
+	
+	<update id="updatePlGroup" parameterType="com.hanaph.saleon.business.vo.MyPlVO">
+		UPDATE SALE.SFA_MYPL_GROUP SET PLGRP_NM = #{plgrp_nm}, COMMENTS = #{comments}, SORT_SEQ = #{sort_seq}
+		WHERE PLGRP_NO = #{plgrp_no}
+		
+	</update>
+	
+	<delete id="deletePlGroup" parameterType="com.hanaph.saleon.business.vo.MyPlVO">
+		DELETE FROM SALE.SFA_MYPL_GROUP WHERE PLGRP_NO = #{plgrp_no}
+	</delete>
+	
+	<select id="getItemTypeList" resultType="com.hanaph.saleon.business.vo.MyPlVO">
+		SELECT CODE1 ITEM_ID, CODE1_NM ITEM_NM
+		  FROM SALE.SALE0001
+		 WHERE CODE_GB = '0071'
+	</select>
+	
+	
+	<select id="getMyPlItemList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.MyPlVO">
+	
+		SELECT A.SAWON_ID, A.PLGRP_NO, A.ITEM_ID, A.SORT_SEQ, C.ITEM_NAME AS ITEM_NM,
+		       C.ITEM_OUT_DANGA, C.ITEM_EFFECT, C.ITEM_USE_DOES, C.ITEM_KIND1,
+		       C.ITEM_KIND2 ITEM_KIND, D.CODE1_NM ITEM_KIND_NM, C.ITEM_KD_NO,
+		          C.ITEM_MAIN_SOURCE
+		       || ''
+		       || C.ITEM_MAIN_SOURCE_SIZE AS ITEM_MAIN_SOURCE_SIZE,
+		       C.ITEM_POJANG_UNIT, '' AS CHECK01, '' AS CHECK02, NVL(LENGTH(C.ITEM_PHOTO), 0) AS CNT
+		  FROM SALE.SFA_MYPL_01 A, SALE.SFA_OFFICE_ITEMDOC C, SALE.SALE0001 D
+		 WHERE A.ITEM_ID = C.ITEM_CODE
+		   AND D.CODE1 = C.ITEM_KIND2
+		   AND D.CODE_GB = '0071'
+		   AND A.SAWON_ID = #{as_sawon_id}
+		   AND A.PLGRP_NO = #{as_plgrp_no}
+		<if test="sidx != ''">
+			ORDER BY ${sidx} ${sord}
+		</if>
+	</select>
+	
+	
+	<select id="getItemList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.MyPlVO">
+
+		SELECT A.ITEM_CODE ITEM_ID, A.ITEM_NAME ITEM_NM, A.ITEM_EFFECT, A.ITEM_USE_DOES, A.ITEM_KIND1,
+		       '' SORT_SEQ, A.ITEM_KIND2 ITEM_KIND, B.CODE1_NM ITEM_KIND_NM, A.ITEM_KD_NO,
+		       A.ITEM_MAIN_SOURCE, A.ITEM_MAIN_SOURCE_SIZE, A.ITEM_POJANG_UNIT,
+		       '' AS CHECK01, '' AS CHECK02
+		  FROM SALE.SFA_OFFICE_ITEMDOC A, SALE.SALE0001 B
+		 WHERE 
+		 	NOT EXISTS (
+	          	SELECT 'x'
+		            FROM SALE.SFA_MYPL_01
+		           WHERE SAWON_ID = #{as_sawon_id}
+		             AND PLGRP_NO = #{as_plgrp_no}
+		             AND ITEM_ID = A.ITEM_CODE)
+		   AND A.USE_YN = 'Y'
+		   AND B.CODE1 = A.ITEM_KIND2
+		   AND B.CODE_GB = '0071'
+		  <if test="as_item_nm != ''">
+		  	AND A.ITEM_NAME LIKE '%' || #{as_item_nm} || '%'
+		  </if>
+		  <if test="as_item_kind != ''">
+		  	AND A.ITEM_KIND2 LIKE #{as_item_kind} || '%'
+		  </if>
+				
+		<if test="sidx != ''">
+			ORDER BY ${sidx} ${sord}
+		</if>	
+		
+	
+	</select>
+
+	<insert id="insertMyPlList" parameterType="com.hanaph.saleon.business.vo.MyPlVO">
+		INSERT INTO SALE.SFA_MYPL_01 
+					(SAWON_ID, PLGRP_NO, ITEM_ID,SORT_SEQ) 
+			 VALUES (#{sawon_id},#{plgrp_no}, #{item_id},#{sort_seq}
+			 )	
+	 
+	</insert>
+	
+	<delete id="deleteMyPlList" parameterType="com.hanaph.saleon.business.vo.MyPlVO">
+		DELETE FROM SALE.SFA_MYPL_01 
+			  WHERE SAWON_ID = #{sawon_id} AND PLGRP_NO = #{plgrp_no}
+	</delete>
+	
+	<select id="getPlItemList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.MyPlVO">
+		<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+	    </if>
+			SELECT A.ITEM_KIND1, A.ITEM_KIND2, B.CODE1_NM ITEM_KIND_NM, A.ITEM_CODE ITEM_ID, A.ITEM_NAME ITEM_NM,
+			       TRIM (REPLACE (A.ITEM_KD_NO, CHR (13) || CHR (10), ' ')) ITEM_KD_NO,
+			       TRIM (REPLACE (A.ITEM_OUT_DANGA, CHR (13) || CHR (10), ' ')) ITEM_OUT_DANGA,
+			       TRIM (REPLACE (A.ITEM_MAIN_SOURCE, CHR (13) || CHR (10), ' ')) ITEM_MAIN_SOURCE,
+			       TRIM (REPLACE (A.ITEM_EFFECT, CHR (13) || CHR (10), ' ')) ITEM_EFFECT,
+			       TRIM (REPLACE (A.ITEM_USE_DOES, CHR (13) || CHR (10), ' ')) ITEM_USE_DOES,
+			       TRIM (REPLACE (A.ITEM_POJANG_UNIT, CHR (13) || CHR (10), ' ')) ITEM_POJANG_UNIT,
+			       A.FONTSIZE_EFFECT, A.FONTSIZE_USE_DOES
+			  FROM SALE.SFA_OFFICE_ITEMDOC A, SALE.SALE0001 B
+			 WHERE B.CODE1 = A.ITEM_KIND2
+			   AND B.CODE_GB = '0071'
+				 <if test="as_item_kind1 != ''">
+				 	AND A.ITEM_KIND1 = #{as_item_kind1}
+				 </if>
+				<if test="as_item_kind2 != ''" >
+					AND A.ITEM_KIND2 = #{as_item_kind2}
+				</if>
+				<if test="as_item_name != ''">
+					AND A.ITEM_NAME LIKE '%' || #{as_item_name} || '%'
+				</if>
+			<if test="sidx != ''">
+				ORDER BY ${sidx} ${sord}
+			</if>
+		<if test="page != null">
+			) T0
+		)
+		WHERE PAGE = #{page,jdbcType=INTEGER}
+		</if>
+	</select>
+	
+	
+	<select id="getplItemCnt" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.MyPlVO">
+		SELECT count(*) cnt
+		  FROM SALE.SFA_OFFICE_ITEMDOC A,
+		  	   SALE.SALE0001 B
+    	 WHERE B.CODE1 = A.ITEM_KIND2
+    	   AND B.CODE_GB = '0071'
+		 
+		<if test="as_item_kind1 != ''">
+		 	AND A.ITEM_KIND1 = #{as_item_kind1}
+		</if>
+		<if test="as_item_kind2 != ''" >
+			AND A.ITEM_KIND2 = #{as_item_kind2}
+		</if>
+		<if test="as_item_name != ''">
+			AND A.ITEM_NAME LIKE '%' || #{as_item_name} || '%'
+		</if>
+	</select>
+	
+	
+	<select id="getItemAllGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.MyPlVO">
+		<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+	    </if>
+			SELECT A.ITEM_ID, A.ITEM_NM, A.STANDARD
+			  FROM SALE.SALE0004 A
+			<where> 
+				<if test="as_item_kind1 != ''">
+				 	A.ITEM_ID || A.ITEM_NM LIKE '%' || #{searchKeyword}|| '%'
+				</if>
+			</where>
+			<if test="sidx != ''">
+				ORDER BY ${sidx} ${sord}
+			</if>
+		<if test="page != null">
+			) T0
+		)
+		WHERE PAGE = #{page,jdbcType=INTEGER}
+		</if>
+	</select>
+	
+	<select id="getItemAllCnt" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.MyPlVO">
+		
+		SELECT count(*) cnt
+		  FROM SALE.SALE0004 A
+		<where> 
+			<if test="as_item_kind1 != ''">
+			 	A.ITEM_ID || A.ITEM_NM LIKE '%' || #{searchKeyword}|| '%'
+			</if>
+		</where>
+	</select>
+	
+	<select id="getPlItemInfo" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.MyPlVO">
+		SELECT ITEM_CODE AS ITEM_ID, ITEM_NAME ITEM_NM, ITEM_EFFECT, ITEM_USE_DOES, ITEM_PHOTO,
+		       ITEM_KIND1, ITEM_PHOTO, ITEM_KD_NO, ITEM_MAIN_SOURCE, ITEM_POJANG_UNIT,
+		       ITEM_OUT_DANGA, ITEM_KIND2, FONTSIZE_EFFECT, FONTSIZE_USE_DOES, USE_YN
+		  FROM SALE.SFA_OFFICE_ITEMDOC
+		 WHERE ITEM_CODE = #{item_id}
+	</select>
+	
+	<select id="getPlItemPhoto" parameterType="hashmap" resultMap="MyPlVO">
+		SELECT ITEM_CODE AS ITEM_ID, ITEM_PHOTO
+		  FROM SALE.SFA_OFFICE_ITEMDOC
+		  WHERE ITEM_CODE = #{item_id}
+	</select>
+	
+	<insert id="insertPlItem" parameterType="com.hanaph.saleon.business.vo.MyPlVO">
+		INSERT INTO SALE.SFA_OFFICE_ITEMDOC (
+		   ITEM_CODE, ITEM_NAME, ITEM_EFFECT, 
+		   ITEM_USE_DOES, ITEM_KIND1, 
+		   ITEM_KD_NO, ITEM_MAIN_SOURCE, ITEM_POJANG_UNIT, 
+		   ITEM_OUT_DANGA, ITEM_KIND2, FONTSIZE_EFFECT, 
+		   FONTSIZE_USE_DOES, USE_YN) 
+		VALUES ( #{item_id}, #{item_nm}, #{item_effect,jdbcType=VARCHAR},
+		    #{item_use_does,jdbcType=VARCHAR}, #{item_kind1},
+		    #{item_kd_no,jdbcType=VARCHAR}, #{item_main_source,jdbcType=VARCHAR}, #{item_pojang_unit,jdbcType=VARCHAR},
+		    #{item_out_danga,jdbcType=VARCHAR}, #{item_kind2}, #{fontsize_effect,jdbcType=INTEGER},
+		    #{fontsize_use_does,jdbcType=INTEGER}, #{use_yn})
+	</insert>
+	
+	
+	<update id="updatePlItem" parameterType="com.hanaph.saleon.business.vo.MyPlVO">
+		UPDATE SALE.SFA_OFFICE_ITEMDOC
+		SET    ITEM_NAME             = #{item_nm},
+		       ITEM_EFFECT           = #{item_effect},
+		       ITEM_USE_DOES         = #{item_use_does},
+		       ITEM_CODE             = #{item_id},
+		       ITEM_KIND1            = #{item_kind1},
+		       ITEM_KD_NO            = #{item_kd_no},
+		       ITEM_MAIN_SOURCE      = #{item_main_source},
+		       ITEM_POJANG_UNIT      = #{item_pojang_unit},
+		       ITEM_OUT_DANGA        = #{item_out_danga},
+		       ITEM_KIND2            = #{item_kind2},
+		       FONTSIZE_EFFECT       = #{fontsize_effect},
+		       FONTSIZE_USE_DOES     = #{fontsize_use_does},
+		       USE_YN                = #{use_yn}
+		WHERE  ITEM_CODE             = #{orgn_item_id}
+
+	</update>
+	
+	
+	<delete id="deletePlItem" parameterType="com.hanaph.saleon.business.vo.MyPlVO">
+		DELETE FROM SALE.SFA_OFFICE_ITEMDOC
+			  WHERE  ITEM_CODE       = #{item_id}
+	</delete>
+	
+	<select id="getItemOverlapCheck" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.MyPlVO">
+		SELECT COUNT(*) CNT
+		  FROM SALE.SFA_OFFICE_ITEMDOC
+	   	 WHERE ITEM_CODE = #{item_id}
+	</select>
+	
+	
+	<update id="updateItemPhoto" parameterType="com.hanaph.saleon.business.vo.MyPlVO">
+	
+		UPDATE SALE.SFA_OFFICE_ITEMDOC
+		SET    ITEM_PHOTO            = #{item_photo}
+		WHERE  ITEM_CODE             = #{item_id}
+		
+	</update>
+	<update id="deleteItemPhoto" parameterType="com.hanaph.saleon.business.vo.MyPlVO">
+	
+		UPDATE SALE.SFA_OFFICE_ITEMDOC
+		SET    ITEM_PHOTO            = ''
+		WHERE  ITEM_CODE             = #{item_id}
+	</update>
+	
+</mapper>
+

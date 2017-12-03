@@ -1,0 +1,1374 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : business_orderApproval.xml
+  * @메뉴명 : 주문 승인
+  * @최초작성일 : 2014/12/05
+  * @author : 윤범진          
+  * @수정내역 :
+ -->
+<mapper namespace="orderApproval"> 
+	
+	<select id="getOrderApprovalGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+	
+		<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+    	</if>
+    	<![CDATA[
+							SELECT COUNT(*) OVER() as TOTAL_CNT,
+								   '' TCHK,
+							       '' CHK,
+							       A.CUST_ID, 
+							       A.RCUST_ID, 
+							       B.CUST_NM CUST_NM, 
+							       C.CUST_NM RCUST_NM, 
+							       A.GUMAE_NO,
+							       TO_CHAR(A.YMD, 'YYYY-MM-DD') YMD, 
+							       A.INPUT_YMD AS REQ_TIME, 
+							       A.GUMAE_NOT AS APP_NO, 
+							       A.BIGO, 
+							       A.PBIGO, 
+							       A.RECEIPT_GB,
+							       A.SLIP_GB, 
+							       A.WIBAN_ORDER_REQ_YN, 
+							       A.WIBAN_ORDER_CONF_YN,
+							       A.WIBAN_KIND, 
+							       D.PSB_QTY,
+							       D.PART_GB,
+							       SALE.F_RATE_DAY_BEFOREMONTH(to_char(add_months(sysdate,-1),'yyyymm'),A.CUST_ID) AS rate_day,
+							       (select SALE.F_GET_NAME('SALE0007',SAWON_ID,'') from SALE.sale0003 where cust_id = a.cust_id) AS  SAWON_NM,
+							       SALE.F_DEPT_NM2(A.SAWON_ID) AS  DEPT_NM,
+							       (SELECT SUM(BEFORE_AMT) + SUM(MISU_AMT) - SUM(SU_AMT)  FROM SALE.SALE0306 WHERE YMD  = TO_DATE(TO_CHAR(A.YMD,'YYYY/MM')||'/01','YYYY/MM/DD') AND CUST_ID = A.CUST_ID GROUP BY CUST_ID)  AS  CUR_AMT,
+							       TO_CHAR(A.YMDT, 'YYYY-MM-DD') YMDT,
+							       TO_CHAR(TO_DATE(A.ADATE, 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD HH24:MI:SS') ADATE,
+							       E.CODE1_NM rcust_gb1,
+							       SALE.F_GET_NAME('SALE0007',ASAWON_ID,'') AS ASAWON_NM,
+							       f_getDangaQtyAmtErrJumun(a.gumae_no,'') AS ERROR_GB
+							  FROM SALE_ON.SALE0203 A, SALE.SALE0003 B, SALE.SALE0003 C, SALE.SALE0001 E,
+							       (  SELECT *
+							            FROM (
+									          SELECT A.GUMAE_NO,
+									                 MIN(C.PSB_QTY) PSB_QTY,
+									                 TO_CHAR(SIGN(SUM(decode(A.PART_GB,'01',0,1)))) AS PART_GB
+									            FROM (            
+									                   SELECT A.GUMAE_NO,
+									                          A.CUST_ID,
+									                          B.ITEM_ID,
+									                          SALE.F_GET_PART_01(A.CUST_ID,A.RCUST_ID,B.ITEM_ID) AS PART_GB
+									                     FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B
+									                    WHERE A.GUMAE_NO   = B.GUMAE_NO
+									                      AND A.RECEIPT_GB IN (${as_receipt_gb})
+									                      ]]>
+														   <!-- 20150430 주문일/승인일 조건 구분 -->
+														   <choose>
+														   	<when test="searchType eq 'order'.toString()"> <!-- 주문일 -->
+														   		AND TO_CHAR(A.INPUT_YMD, 'YYYYMMDDHH24MI') BETWEEN #{adt_fr_datetime,jdbcType=DATE} AND #{adt_to_datetime,jdbcType=DATE}
+									                      		AND A.YMD BETWEEN TO_DATE(#{adt_fr_date}) AND TO_DATE(#{adt_to_date})
+														   	</when>
+														   	<when test="searchType eq 'approval'.toString()"> <!-- 승인일 -->
+														   		AND A.ADATE BETWEEN #{adt_fr_datetime,jdbcType=DATE}||'00' AND #{adt_to_datetime,jdbcType=DATE}||'59' 
+														   	</when>
+														   </choose>
+														   <![CDATA[ 									                      
+									                      AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+									                      AND A.SLIP_GB    = #{as_slip_gb,jdbcType=VARCHAR}
+									                      AND NVL(A.LIMIT_YN,'N')    IN (${as_limit_yn})
+									                 ) A,
+									                 (
+									                    SELECT A.CUST_ID, E.ITEM_ID,
+									                           ROUND(A.QTY * E.JLIMIT)                                   MAVG_QTY,
+									                           NVL(C.MQTY,0) + NVL(D.MQTY,0)                             MQTY,
+									                           ROUND(A.QTY * E.JLIMIT) - (NVL(C.MQTY,0) + NVL(D.MQTY,0)) PSB_QTY
+									                      FROM (
+									                            SELECT /*+ USE_NL(A B C)*/ A.CUST_ID, B.ITEM_ID, (C.JUMUN_LIMIT /100) JLIMIT
+									                              FROM SALE.SALE0203 A, SALE.SALE0204 B, SALE.SALE0003 C
+									                             WHERE A.YMD      < TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+									                               AND A.YMD      >= ADD_MONTHS(TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01') ,-3)
+									                               AND A.GUMAE_NO = B.GUMAE_NO 
+									                               AND A.CUST_ID  = C.CUST_ID(+)
+									                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+									                            UNION
+									                            SELECT /*+ USE_NL(A B C)*/ A.CUST_ID, B.ITEM_ID, (C.JUMUN_LIMIT /100) JLIMIT
+									                              FROM SALE.SALE0203 A, SALE.SALE0204 B, SALE.SALE0003 C
+									                             WHERE A.YMD      >= TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01')  
+									                               AND A.YMD      <= LAST_DAY(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+									                               AND A.GUMAE_NO = B.GUMAE_NO 
+									                               AND A.CUST_ID  = C.CUST_ID(+)
+									                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+									                            UNION
+									                            SELECT A.CUST_ID, B.ITEM_ID, (C.JUMUN_LIMIT /100) JLIMIT
+									                              FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B, SALE.SALE0003 C
+									                             WHERE A.YMD      >= TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01')  
+									                               AND A.YMD      <= LAST_DAY(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+									                               AND A.GUMAE_NO = B.GUMAE_NO 
+									                               AND A.RECEIPT_GB IN (${as_receipt_gb})
+									                               AND A.CUST_ID  = C.CUST_ID(+)
+									                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+									                           ) E,
+									                           (
+									                            SELECT /*+ USE_NL(A B)*/ A.CUST_ID, B.ITEM_ID,
+									                                   ROUND((NVL(SUM(B.QTY),0)/3)) QTY
+									                              FROM SALE.SALE0203 A, SALE.SALE0204 B
+									                             WHERE A.YMD      < TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+									                               AND A.YMD      >= ADD_MONTHS(TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01') ,-3)
+									                               AND A.GUMAE_NO = B.GUMAE_NO 
+									                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+									                             GROUP BY A.CUST_ID, B.ITEM_ID
+									                           ) A,
+									                           (
+									                            SELECT A.CUST_ID, B.ITEM_ID,
+									                                   NVL(SUM(B.QTY),0) MQTY
+									                              FROM SALE.SALE0203 A, SALE.SALE0204 B
+									                             WHERE A.YMD      >= TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01')  
+									                               AND A.YMD      <= LAST_DAY(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+									                               AND A.GUMAE_NO = B.GUMAE_NO 
+									                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+									                             GROUP BY A.CUST_ID, B.ITEM_ID
+									                           ) C,
+									                           (
+									                            SELECT A.CUST_ID, B.ITEM_ID,
+									                                   NVL(SUM(B.QTY),0) MQTY
+									                              FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B
+									                             WHERE A.YMD      >= TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01')  
+									                               AND A.YMD      <= LAST_DAY(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+									                               AND A.GUMAE_NO = B.GUMAE_NO 
+									                               AND A.RECEIPT_GB IN (${as_receipt_gb})
+									                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+									                             GROUP BY A.CUST_ID, B.ITEM_ID
+									                           ) D
+									                     WHERE E.CUST_ID = A.CUST_ID(+)
+									                       AND E.ITEM_ID = A.ITEM_ID(+)
+									                       AND E.CUST_ID = C.CUST_ID(+)
+									                       AND E.ITEM_ID = C.ITEM_ID(+)
+									                       AND E.CUST_ID = D.CUST_ID(+)
+									                       AND E.ITEM_ID = D.ITEM_ID(+)                                
+									                 ) C
+									           WHERE A.CUST_ID  = C.CUST_ID(+)
+									             AND A.ITEM_ID  = C.ITEM_ID(+)             
+									           GROUP BY A.GUMAE_NO           
+									       )
+							         WHERE SIGN(NVL(PSB_QTY,0)) IN (DECODE(#{as_psb_gb,jdbcType=VARCHAR},'0', 0,'1',0,'2',-1),
+							                                        DECODE(#{as_psb_gb,jdbcType=VARCHAR},'0', 1,'1',1),
+							                                        DECODE(#{as_psb_gb,jdbcType=VARCHAR},'0',-1))
+							    
+							       ) D 
+							 WHERE A.CUST_ID              = B.CUST_ID
+							   AND A.RCUST_ID             = C.CUST_ID
+							   AND A.RECEIPT_GB           IN (${as_receipt_gb})
+		                      ]]>
+							   <!-- 20150430 주문일/승인일 조건 구분 -->
+							   <choose>
+							   	<when test="searchType eq 'order'.toString()"> <!-- 주문일 -->
+							   		AND TO_CHAR(A.INPUT_YMD, 'YYYYMMDDHH24MI') BETWEEN #{adt_fr_datetime,jdbcType=DATE} AND #{adt_to_datetime,jdbcType=DATE}
+		                      		AND A.YMD BETWEEN TO_DATE(#{adt_fr_date}) AND TO_DATE(#{adt_to_date})
+							   	</when>
+							   	<when test="searchType eq 'approval'.toString()"> <!-- 승인일 -->
+							   		AND A.ADATE BETWEEN #{adt_fr_datetime,jdbcType=DATE}||'00' AND #{adt_to_datetime,jdbcType=DATE}||'59' 
+							   	</when>
+							   </choose>
+							   <![CDATA[ 
+							   AND A.CUST_ID              LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+							   AND A.SLIP_GB              = #{as_slip_gb,jdbcType=VARCHAR}
+							   AND NVL(A.LIMIT_YN,'N')    IN (${as_limit_yn})
+							   AND A.WIBAN_KIND  LIKE #{as_wiban_kind,jdbcType=VARCHAR}
+							   AND DECODE(A.WIBAN_ORDER_REQ_YN,'Y',A.WIBAN_ORDER_CONF_YN,'9') IN DECODE(A.WIBAN_ORDER_REQ_YN,'Y','1','9')
+							   AND B.PRE_DEPOSIT LIKE #{as_pre_deposit,jdbcType=VARCHAR}
+							   AND A.GUMAE_NO             = D.GUMAE_NO(+)
+							   ]]>
+							   <!-- 20150130 간납구분 로직 수정 -->
+							   <choose>
+							   	<when test="as_part_gb !=null and as_part_gb eq '1'.toString()"> <!-- 약국분 -->
+							   		AND C.CUST_GB1 = '05'
+							   	</when>
+							   	<when test="as_part_gb !=null and as_part_gb eq '0'.toString()"> <!-- 일반 -->
+							   		AND C.CUST_GB1 != '05'
+							   	</when>
+							   </choose>
+							   <![CDATA[
+							   AND C.CUST_GB1 = E.CODE1
+							   AND E.CODE_GB = '0020'
+		 						]]>
+					<if test="sidx != ''">
+						ORDER BY ${sidx} ${sord}
+					</if>
+		
+				<if test="page != null">
+					) T0
+				)
+				WHERE PAGE = #{page,jdbcType=INTEGER}
+				</if>
+	</select>
+	
+
+	<!-- kta -->
+	<select id="getOrderApprovalGridListExcel" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+	
+		<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+    	</if>
+    	<![CDATA[
+							SELECT COUNT(*) OVER() as TOTAL_CNT,
+								   '' TCHK,
+							       '' CHK,
+							       A.CUST_ID, 
+							       A.RCUST_ID, 
+							       B.CUST_NM CUST_NM, 
+							       C.CUST_NM RCUST_NM, 
+							       A.GUMAE_NO,
+							       TO_CHAR(A.YMD, 'YYYY-MM-DD') YMD, 
+							       A.INPUT_YMD AS REQ_TIME, 
+							       A.GUMAE_NOT AS APP_NO, 
+							       A.BIGO, 
+							       A.PBIGO, 
+							       A.RECEIPT_GB,
+							       A.SLIP_GB, 
+							       A.WIBAN_ORDER_REQ_YN, 
+							       A.WIBAN_ORDER_CONF_YN,
+							       A.WIBAN_KIND, 
+							       D.PSB_QTY,
+							       D.PART_GB,
+							       SALE.F_RATE_DAY_BEFOREMONTH(to_char(add_months(sysdate,-1),'yyyymm'),A.CUST_ID) AS rate_day,
+							       (select SALE.F_GET_NAME('SALE0007',SAWON_ID,'') from SALE.sale0003 where cust_id = a.cust_id) AS  SAWON_NM,
+							       SALE.F_DEPT_NM2(A.SAWON_ID) AS  DEPT_NM,
+							       (SELECT SUM(BEFORE_AMT) + SUM(MISU_AMT) - SUM(SU_AMT)  FROM SALE.SALE0306 WHERE YMD  = TO_DATE(TO_CHAR(A.YMD,'YYYY/MM')||'/01','YYYY/MM/DD') AND CUST_ID = A.CUST_ID GROUP BY CUST_ID)  AS  CUR_AMT,
+							       TO_CHAR(A.YMDT, 'YYYY-MM-DD') YMDT,
+							       TO_CHAR(TO_DATE(A.ADATE, 'YYYYMMDDHH24MISS'), 'YYYY-MM-DD HH24:MI:SS') ADATE,
+							       E.CODE1_NM rcust_gb1
+							  FROM SALE_ON.SALE0203 A, SALE.SALE0003 B, SALE.SALE0003 C, SALE.SALE0001 E,
+							       (  
+							       SELECT * 
+							         FROM (     
+							          SELECT A.GUMAE_NO,
+							                 MIN(C.PSB_QTY) PSB_QTY,
+							                 TO_CHAR(SIGN(SUM(decode(A.PART_GB,'01',0,1)))) AS PART_GB
+							            FROM (            
+							                   SELECT A.GUMAE_NO,
+							                          A.CUST_ID,
+							                          B.ITEM_ID,
+							                          SALE.F_GET_PART_01(A.CUST_ID,A.RCUST_ID,B.ITEM_ID) AS PART_GB
+							                     FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B
+							                    WHERE A.GUMAE_NO   = B.GUMAE_NO
+							                      AND A.RECEIPT_GB IN (${as_receipt_gb})
+									                      ]]>
+														   <!-- 20150430 주문일/승인일 조건 구분 -->
+														   <choose>
+														   	<when test="searchType eq 'order'.toString()"> <!-- 주문일 -->
+														   		AND TO_CHAR(A.INPUT_YMD, 'YYYYMMDDHH24MI') BETWEEN #{adt_fr_datetime,jdbcType=DATE} AND #{adt_to_datetime,jdbcType=DATE}
+									                      		AND A.YMD BETWEEN TO_DATE(#{adt_fr_date}) AND TO_DATE(#{adt_to_date})
+														   	</when>
+														   	<when test="searchType eq 'approval'.toString()"> <!-- 승인일 -->
+														   		AND A.ADATE BETWEEN #{adt_fr_datetime,jdbcType=DATE}||'00' AND #{adt_to_datetime,jdbcType=DATE}||'59' 
+														   	</when>
+														   </choose>
+														   <![CDATA[ 							                      
+							                      AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+							                      AND A.SLIP_GB    = #{as_slip_gb,jdbcType=VARCHAR}
+							                      AND NVL(A.LIMIT_YN,'N')    IN (${as_limit_yn})
+							                 ) A,
+							                 (
+							                    SELECT A.CUST_ID, E.ITEM_ID,
+							                           ROUND(A.QTY * E.JLIMIT)                                   MAVG_QTY,
+							                           NVL(C.MQTY,0) + NVL(D.MQTY,0)                             MQTY,
+							                           ROUND(A.QTY * E.JLIMIT) - (NVL(C.MQTY,0) + NVL(D.MQTY,0)) PSB_QTY
+							                      FROM (
+							                            SELECT /*+ USE_NL(A B C)*/ A.CUST_ID, B.ITEM_ID, (C.JUMUN_LIMIT /100) JLIMIT
+							                              FROM SALE.SALE0203 A, SALE.SALE0204 B, SALE.SALE0003 C
+							                             WHERE A.YMD      < TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+							                               AND A.YMD      >= ADD_MONTHS(TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01') ,-3)
+							                               AND A.GUMAE_NO = B.GUMAE_NO 
+							                               AND A.CUST_ID  = C.CUST_ID(+)
+							                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+							                            UNION
+							                            SELECT /*+ USE_NL(A B C)*/ A.CUST_ID, B.ITEM_ID, (C.JUMUN_LIMIT /100) JLIMIT
+							                              FROM SALE.SALE0203 A, SALE.SALE0204 B, SALE.SALE0003 C
+							                             WHERE A.YMD      >= TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01')  
+							                               AND A.YMD      <= LAST_DAY(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+							                               AND A.GUMAE_NO = B.GUMAE_NO 
+							                               AND A.CUST_ID  = C.CUST_ID(+)
+							                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+							                            UNION
+							                            SELECT A.CUST_ID, B.ITEM_ID, (C.JUMUN_LIMIT /100) JLIMIT
+							                              FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B, SALE.SALE0003 C
+							                             WHERE A.YMD      >= TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01')  
+							                               AND A.YMD      <= LAST_DAY(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+							                               AND A.GUMAE_NO = B.GUMAE_NO 
+							                               AND A.RECEIPT_GB IN (${as_receipt_gb})
+							                               AND A.CUST_ID  = C.CUST_ID(+)
+							                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+							                           ) E,
+							                           (
+							                            SELECT /*+ USE_NL(A B)*/ A.CUST_ID, B.ITEM_ID,
+							                                   ROUND((NVL(SUM(B.QTY),0)/3)) QTY
+							                              FROM SALE.SALE0203 A, SALE.SALE0204 B
+							                             WHERE A.YMD      < TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+							                               AND A.YMD      >= ADD_MONTHS(TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01') ,-3)
+							                               AND A.GUMAE_NO = B.GUMAE_NO 
+							                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+							                             GROUP BY A.CUST_ID, B.ITEM_ID
+							                           ) A,
+							                           (
+							                            SELECT A.CUST_ID, B.ITEM_ID,
+							                                   NVL(SUM(B.QTY),0) MQTY
+							                              FROM SALE.SALE0203 A, SALE.SALE0204 B
+							                             WHERE A.YMD      >= TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01')  
+							                               AND A.YMD      <= LAST_DAY(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+							                               AND A.GUMAE_NO = B.GUMAE_NO 
+							                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+							                             GROUP BY A.CUST_ID, B.ITEM_ID
+							                           ) C,
+							                           (
+							                            SELECT A.CUST_ID, B.ITEM_ID,
+							                                   NVL(SUM(B.QTY),0) MQTY
+							                              FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B
+							                             WHERE A.YMD      >= TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01')  
+							                               AND A.YMD      <= LAST_DAY(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+							                               AND A.GUMAE_NO = B.GUMAE_NO 
+							                               AND A.RECEIPT_GB IN (${as_receipt_gb})
+							                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+							                             GROUP BY A.CUST_ID, B.ITEM_ID
+							                           ) D
+							                     WHERE E.CUST_ID = A.CUST_ID(+)
+							                       AND E.ITEM_ID = A.ITEM_ID(+)
+							                       AND E.CUST_ID = C.CUST_ID(+)
+							                       AND E.ITEM_ID = C.ITEM_ID(+)
+							                       AND E.CUST_ID = D.CUST_ID(+)
+							                       AND E.ITEM_ID = D.ITEM_ID(+)                                
+							                 ) C
+							           WHERE A.CUST_ID  = C.CUST_ID(+)
+							             AND A.ITEM_ID  = C.ITEM_ID(+)             
+							           GROUP BY A.GUMAE_NO   
+							           )
+							       WHERE  SIGN(NVL(PSB_QTY,0)) IN (DECODE(#{as_psb_gb,jdbcType=VARCHAR},'0', 0,'1',0,'2',-1),
+							                                  DECODE(#{as_psb_gb,jdbcType=VARCHAR},'0', 1,'1',1),
+							                                  DECODE(#{as_psb_gb,jdbcType=VARCHAR},'0',-1))        
+							       ) D 
+							 WHERE A.CUST_ID              = B.CUST_ID
+							   AND A.RCUST_ID             = C.CUST_ID
+							   AND A.RECEIPT_GB           IN (${as_receipt_gb})
+		                      ]]>
+							   <!-- 20150430 주문일/승인일 조건 구분 -->
+							   <choose>
+							   	<when test="searchType eq 'order'.toString()"> <!-- 주문일 -->
+							   		AND TO_CHAR(A.INPUT_YMD, 'YYYYMMDDHH24MI') BETWEEN #{adt_fr_datetime,jdbcType=DATE} AND #{adt_to_datetime,jdbcType=DATE}
+		                      		AND A.YMD BETWEEN TO_DATE(#{adt_fr_date}) AND TO_DATE(#{adt_to_date})
+							   	</when>
+							   	<when test="searchType eq 'approval'.toString()"> <!-- 승인일 -->
+							   		AND A.ADATE BETWEEN #{adt_fr_datetime,jdbcType=DATE}||'00' AND #{adt_to_datetime,jdbcType=DATE}||'59' 
+							   	</when>
+							   </choose>
+							   <![CDATA[ 
+							   AND A.CUST_ID              LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+							   AND A.SLIP_GB              = #{as_slip_gb,jdbcType=VARCHAR}
+							   AND NVL(A.LIMIT_YN,'N')    IN (${as_limit_yn})
+							   AND A.WIBAN_KIND  LIKE #{as_wiban_kind,jdbcType=VARCHAR}
+							   AND DECODE(A.WIBAN_ORDER_REQ_YN,'Y',A.WIBAN_ORDER_CONF_YN,'9') IN DECODE(A.WIBAN_ORDER_REQ_YN,'Y','1','9')
+							   AND B.PRE_DEPOSIT LIKE #{as_pre_deposit,jdbcType=VARCHAR}
+							   AND A.GUMAE_NO             = D.GUMAE_NO(+)
+							   ]]>
+							   <!-- 20150130 간납구분 로직 수정 -->
+							   <choose>
+							   	<when test="as_part_gb == 1"> <!-- 약국분 -->
+							   		AND C.CUST_GB1 = '05'
+							   	</when>
+							   	<when test="as_part_gb == 0"> <!-- 일반 -->
+							   		AND C.CUST_GB1 != '05'
+							   	</when>
+							   </choose>
+							   <![CDATA[
+							   AND C.CUST_GB1 = E.CODE1
+							   AND E.CODE_GB = '0020'
+		 						]]>
+					<if test="sidx != ''">
+						ORDER BY ${sidx} ${sord}
+					</if>
+		
+				<if test="page != null">
+					) T0
+				)
+				WHERE PAGE = #{page,jdbcType=INTEGER}
+				</if>
+	</select>	
+	
+	<select id="getOrderApprovalGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+	<![CDATA[
+		SELECT COUNT(*) total_cnt
+		  FROM (SELECT '' TCHK,
+				       '' CHK,
+				       A.CUST_ID, 
+				       A.RCUST_ID, 
+				       B.CUST_NM CUST_NM, 
+				       C.CUST_NM RCUST_NM, 
+				       A.GUMAE_NO,
+				       A.YMD, 
+				       A.INPUT_YMD AS REQ_TIME, 
+				       A.GUMAE_NOT AS APP_NO, 
+				       A.BIGO, 
+				       A.PBIGO, 
+				       A.RECEIPT_GB,
+				       A.SLIP_GB, 
+				       A.WIBAN_ORDER_REQ_YN, 
+				       A.WIBAN_ORDER_CONF_YN,
+				       A.WIBAN_KIND, 
+				       D.PSB_QTY,
+				       D.PART_GB,
+				       SALE.F_RATE_DAY_BEFOREMONTH(to_char(add_months(sysdate,-1),'yyyymm'),A.CUST_ID) AS rate_day,
+				       (select SALE.F_GET_NAME('SALE0007',SAWON_ID,'') from SALE.sale0003 where cust_id = a.cust_id) AS  SAWON_NM,
+				       SALE.F_DEPT_NM2(A.SAWON_ID) AS  DEPT_NM,
+				       (SELECT SUM(BEFORE_AMT) + SUM(MISU_AMT) - SUM(SU_AMT)  FROM SALE.SALE0306 WHERE YMD  = TO_DATE(TO_CHAR(A.YMD,'YYYY/MM')||'/01','YYYY/MM/DD') AND CUST_ID = A.CUST_ID GROUP BY CUST_ID)  AS  CUR_AMT
+				  FROM SALE_ON.SALE0203 A, SALE.SALE0003 B, SALE.SALE0003 C,
+				       (       
+				          SELECT A.GUMAE_NO,
+				                 MIN(C.PSB_QTY) PSB_QTY,
+				                 TO_CHAR(SIGN(SUM(decode(A.PART_GB,'01',0,1)))) AS PART_GB
+				            FROM (            
+				                   SELECT A.GUMAE_NO,
+				                          A.CUST_ID,
+				                          B.ITEM_ID,
+				                          SALE.F_GET_PART_01(A.CUST_ID,A.RCUST_ID,B.ITEM_ID) AS PART_GB
+				                     FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B
+				                    WHERE A.GUMAE_NO   = B.GUMAE_NO
+				                      AND A.RECEIPT_GB IN (${as_receipt_gb})
+				                      AND TO_CHAR(A.INPUT_YMD, 'YYYYMMDDHH24MI') BETWEEN #{adt_fr_datetime,jdbcType=DATE} AND #{adt_to_datetime,jdbcType=DATE}
+				                      AND A.YMD BETWEEN TO_DATE(#{adt_fr_date}) AND TO_DATE(#{adt_to_date})
+				                      AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+				                      AND A.SLIP_GB    = #{as_slip_gb,jdbcType=VARCHAR}
+				                      AND NVL(A.LIMIT_YN,'N')    IN (${as_limit_yn})
+				                 ) A,
+				                 (
+				                    SELECT A.CUST_ID, E.ITEM_ID,
+				                           ROUND(A.QTY * E.JLIMIT)                                   MAVG_QTY,
+				                           NVL(C.MQTY,0) + NVL(D.MQTY,0)                             MQTY,
+				                           ROUND(A.QTY * E.JLIMIT) - (NVL(C.MQTY,0) + NVL(D.MQTY,0)) PSB_QTY
+				                      FROM (
+				                            SELECT /*+ USE_NL(A B C)*/ A.CUST_ID, B.ITEM_ID, (C.JUMUN_LIMIT /100) JLIMIT
+				                              FROM SALE.SALE0203 A, SALE.SALE0204 B, SALE.SALE0003 C
+				                             WHERE A.YMD      < TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+				                               AND A.YMD      >= ADD_MONTHS(TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01') ,-3)
+				                               AND A.GUMAE_NO = B.GUMAE_NO 
+				                               AND A.CUST_ID  = C.CUST_ID(+)
+				                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+				                            UNION
+				                            SELECT /*+ USE_NL(A B C)*/ A.CUST_ID, B.ITEM_ID, (C.JUMUN_LIMIT /100) JLIMIT
+				                              FROM SALE.SALE0203 A, SALE.SALE0204 B, SALE.SALE0003 C
+				                             WHERE A.YMD      >= TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01')  
+				                               AND A.YMD      <= LAST_DAY(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+				                               AND A.GUMAE_NO = B.GUMAE_NO 
+				                               AND A.CUST_ID  = C.CUST_ID(+)
+				                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+				                            UNION
+				                            SELECT A.CUST_ID, B.ITEM_ID, (C.JUMUN_LIMIT /100) JLIMIT
+				                              FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B, SALE.SALE0003 C
+				                             WHERE A.YMD      >= TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01')  
+				                               AND A.YMD      <= LAST_DAY(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+				                               AND A.GUMAE_NO = B.GUMAE_NO 
+				                               AND A.RECEIPT_GB IN (${as_receipt_gb})
+				                               AND A.CUST_ID  = C.CUST_ID(+)
+				                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+				                           ) E,
+				                           (
+				                            SELECT A.CUST_ID, B.ITEM_ID,
+				                                   ROUND((NVL(SUM(B.QTY),0)/3)) QTY
+				                              FROM SALE.SALE0203 A, SALE.SALE0204 B
+				                             WHERE A.YMD      < TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+				                               AND A.YMD      >= ADD_MONTHS(TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01') ,-3)
+				                               AND A.GUMAE_NO = B.GUMAE_NO 
+				                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+				                             GROUP BY A.CUST_ID, B.ITEM_ID
+				                           ) A,
+				                           (
+				                            SELECT A.CUST_ID, B.ITEM_ID,
+				                                   NVL(SUM(B.QTY),0) MQTY
+				                              FROM SALE.SALE0203 A, SALE.SALE0204 B
+				                             WHERE A.YMD      >= TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01')  
+				                               AND A.YMD      <= LAST_DAY(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+				                               AND A.GUMAE_NO = B.GUMAE_NO 
+				                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+				                             GROUP BY A.CUST_ID, B.ITEM_ID
+				                           ) C,
+				                           (
+				                            SELECT A.CUST_ID, B.ITEM_ID,
+				                                   NVL(SUM(B.QTY),0) MQTY
+				                              FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B
+				                             WHERE A.YMD      >= TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01')  
+				                               AND A.YMD      <= LAST_DAY(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+				                               AND A.GUMAE_NO = B.GUMAE_NO 
+				                               AND A.RECEIPT_GB IN (${as_receipt_gb})
+				                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+				                             GROUP BY A.CUST_ID, B.ITEM_ID
+				                           ) D
+				                     WHERE E.CUST_ID = A.CUST_ID(+)
+				                       AND E.ITEM_ID = A.ITEM_ID(+)
+				                       AND E.CUST_ID = C.CUST_ID(+)
+				                       AND E.ITEM_ID = C.ITEM_ID(+)
+				                       AND E.CUST_ID = D.CUST_ID(+)
+				                       AND E.ITEM_ID = D.ITEM_ID(+)                                
+				                 ) C
+				           WHERE A.CUST_ID  = C.CUST_ID(+)
+				             AND A.ITEM_ID  = C.ITEM_ID(+)             
+				           GROUP BY A.GUMAE_NO           
+				       ) D 
+				 WHERE A.CUST_ID              = B.CUST_ID
+				   AND A.RCUST_ID             = C.CUST_ID
+				   AND A.RECEIPT_GB           IN (${as_receipt_gb})
+                   AND TO_CHAR(A.INPUT_YMD, 'YYYYMMDDHH24MI') BETWEEN #{adt_fr_datetime,jdbcType=DATE} AND #{adt_to_datetime,jdbcType=DATE}
+                   AND A.YMD BETWEEN TO_DATE(#{adt_fr_date}) AND TO_DATE(#{adt_to_date})
+				   AND A.CUST_ID              LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+				   AND A.SLIP_GB              = #{as_slip_gb,jdbcType=VARCHAR}
+				   AND NVL(A.LIMIT_YN,'N')    IN (${as_limit_yn})
+				   AND A.WIBAN_KIND  LIKE #{as_wiban_kind,jdbcType=VARCHAR}
+				   AND DECODE(A.WIBAN_ORDER_REQ_YN,'Y',A.WIBAN_ORDER_CONF_YN,'9') IN DECODE(A.WIBAN_ORDER_REQ_YN,'Y','1','9')
+				   AND B.PRE_DEPOSIT LIKE #{as_pre_deposit,jdbcType=VARCHAR}
+				   AND A.GUMAE_NO             = D.GUMAE_NO(+)
+				   AND SIGN(NVL(D.PSB_QTY,0)) IN (DECODE(#{as_psb_gb,jdbcType=VARCHAR},'0', 0,'1',0,'2',-1),
+				                                  DECODE(#{as_psb_gb,jdbcType=VARCHAR},'0', 1,'1',1),
+				                                  DECODE(#{as_psb_gb,jdbcType=VARCHAR},'0',-1))
+				   AND D.PART_GB like #{as_part_gb,jdbcType=VARCHAR})
+	]]>
+	</select>
+	
+	<select id="getOrderDetailGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+		<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+    	</if>
+    					<![CDATA[
+							SELECT   A.YMD          YMD,
+							         A.GUMAE_NO     GUMAE_NO,
+							         A.ITEM_ID      ITEM_ID,
+							         B.ITEM_NM      ITEM_NM,
+							         A.QTY          QTY,   
+							         A.DANGA        DANGA,   
+							         A.AMT          AMT,   
+							         A.VAT          VAT,
+							         A.AMT + A.VAT  TOT_AMT,   
+							         A.RATE         RATE,   
+							         A.DC_DANGA     DC_DANGA,
+							         A.DC_AMT       DC_AMT,
+							         A.DC_QTY       DC_QTY,   
+							         B.STANDARD     STANDARD,
+							         B.UNIT         UNIT,
+							         B.COLOR, 
+							         C.MAVG_QTY,
+							         C.MQTY,
+							         C.PSB_QTY,
+							         (select /*+ index_desc(z SYS_C0017312) */ sale.f_sawon_nm(sawon_id) from sale.sale0405 z where z.cust_id = #{as_cust_id,jdbcType=VARCHAR} and z.rcust_id = #{as_rcust_id,jdbcType=VARCHAR} and z.item_id = a.item_id and rownum =1) as sawon_nm,
+							         A.REQ_QTY REQ_QTY,
+							         A.INPUT_SEQ INPUT_SEQ,
+                                     f_getdangaqtyamterrjumun(a.gumae_no,a.item_id) ERROR_GB_D
+							    FROM SALE_ON.SALE0204 A, 
+							         SALE.SALE0004 B,
+							         (
+							            SELECT E.ITEM_ID,
+							                   ROUND(A.QTY * B.JLIMIT)                                   MAVG_QTY,
+							                   NVL(C.MQTY,0) + NVL(D.MQTY,0)                             MQTY,
+							                   ROUND(NVL(A.QTY,0) * NVL(B.JLIMIT,0)) - (NVL(C.MQTY,0) + NVL(D.MQTY,0)) PSB_QTY
+							              FROM (
+							                    SELECT B.ITEM_ID
+							                      FROM SALE.SALE0203 A, SALE.SALE0204 B
+							                     WHERE A.CUST_ID  = #{as_cust_id,jdbcType=VARCHAR}
+							                       AND A.RCUST_ID = #{as_rcust_id,jdbcType=VARCHAR}
+							                       AND A.YMD      < TO_DATE(SUBSTR(#{ls_ymd,jdbcType=VARCHAR},1,6)||'01') 
+							                       AND A.YMD      >= ADD_MONTHS(TO_DATE(SUBSTR(#{ls_ymd,jdbcType=VARCHAR},1,6)||'01') ,-3)
+							                       AND A.GUMAE_NO = B.GUMAE_NO 
+							                    UNION
+							                    SELECT B.ITEM_ID
+							                      FROM SALE.SALE0203 A, SALE.SALE0204 B
+							                     WHERE A.CUST_ID  = #{as_cust_id,jdbcType=VARCHAR}
+							                       AND A.RCUST_ID = #{as_rcust_id,jdbcType=VARCHAR}
+							                       AND A.YMD      >= TO_DATE(SUBSTR(#{ls_ymd,jdbcType=VARCHAR},1,6)||'01')  
+							                       AND A.YMD      <= LAST_DAY(SUBSTR(#{ls_ymd,jdbcType=VARCHAR},1,6)||'01') 
+							                       AND A.GUMAE_NO = B.GUMAE_NO 
+							                    UNION
+							                    SELECT B.ITEM_ID
+							                      FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B
+							                     WHERE A.CUST_ID  = #{as_cust_id,jdbcType=VARCHAR}
+							                       AND A.RCUST_ID = #{as_rcust_id,jdbcType=VARCHAR}
+							                       AND A.YMD      >= TO_DATE(SUBSTR(#{ls_ymd,jdbcType=VARCHAR},1,6)||'01')  
+							                       AND A.YMD      <= LAST_DAY(SUBSTR(#{ls_ymd,jdbcType=VARCHAR},1,6)||'01') 
+							                       AND A.GUMAE_NO = B.GUMAE_NO 
+							                       AND A.RECEIPT_GB = '1' /*접수*/
+							                   ) E,
+							                   (
+							                     SELECT B.ITEM_ID,
+							                           ROUND((NVL(SUM(B.QTY),0)/MAX(c.months))) QTY
+							                      FROM SALE.SALE0203 A, SALE.SALE0204 B,(select sale.f_cust_gaip_months(TO_DATE(#{ls_ymd,jdbcType=VARCHAR},'YYYYMMDD'),#{as_cust_id,jdbcType=VARCHAR}) as months from dual) C
+							                     WHERE A.CUST_ID  = #{as_cust_id,jdbcType=VARCHAR}
+							                       AND A.RCUST_ID = #{as_rcust_id,jdbcType=VARCHAR}
+							                       AND A.YMD      < TO_DATE(SUBSTR(#{ls_ymd,jdbcType=VARCHAR},1,6)||'01') 
+							                       AND A.YMD      >= ADD_MONTHS(TO_DATE(SUBSTR(#{ls_ymd,jdbcType=VARCHAR},1,6)||'01') , c.months * -1)
+							                       AND A.GUMAE_NO = B.GUMAE_NO 
+							                     GROUP BY B.ITEM_ID
+							                   ) A,
+							                   (
+							                    SELECT (JUMUN_LIMIT /100) JLIMIT FROM SALE.SALE0003 WHERE CUST_ID = #{as_cust_id,jdbcType=VARCHAR}
+							                   ) B,
+							                   (
+							                    SELECT B.ITEM_ID,
+							                           NVL(SUM(B.QTY),0) MQTY
+							                      FROM SALE.SALE0203 A, SALE.SALE0204 B
+							                     WHERE A.CUST_ID  = #{as_cust_id,jdbcType=VARCHAR}
+							                       AND A.RCUST_ID = #{as_rcust_id,jdbcType=VARCHAR}
+							                       AND A.YMD      >= TO_DATE(SUBSTR(#{as_avg_month,jdbcType=VARCHAR},1,6)||'01')  
+							                       AND A.YMD      <= LAST_DAY(SUBSTR(#{as_avg_month,jdbcType=VARCHAR},1,6)||'01') 
+							                       AND A.GUMAE_NO = B.GUMAE_NO 
+							                     GROUP BY B.ITEM_ID
+							                   ) C,
+							                   (
+							                    SELECT B.ITEM_ID,
+							                           NVL(SUM(B.QTY),0) MQTY
+							                      FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B
+							                     WHERE A.CUST_ID  = #{as_cust_id,jdbcType=VARCHAR}
+							                       AND A.RCUST_ID = #{as_rcust_id,jdbcType=VARCHAR}
+							                       AND A.YMD      >= TO_DATE(SUBSTR(#{as_avg_month,jdbcType=VARCHAR},1,6)||'01')  
+							                       AND A.YMD      <= LAST_DAY(SUBSTR(#{as_avg_month,jdbcType=VARCHAR},1,6)||'01') 
+							                       AND A.GUMAE_NO = B.GUMAE_NO 
+							                       AND A.RECEIPT_GB = '1' /*접수*/
+							                       AND A.WIBAN_ORDER_CONF_YN    <> '2' /*위반주문 지점장 반려한것빼고 */ 
+							                     GROUP BY B.ITEM_ID
+							                   ) D
+							             WHERE E.ITEM_ID = A.ITEM_ID(+)
+							               AND E.ITEM_ID = C.ITEM_ID(+)
+							               AND E.ITEM_ID = D.ITEM_ID(+)         
+							         ) C
+							   WHERE A.ITEM_ID  = B.ITEM_ID
+							     AND A.GUMAE_NO = #{as_gumae_no,jdbcType=VARCHAR}
+							     AND A.YMD      = TO_DATE(#{ls_ymd,jdbcType=VARCHAR})
+							     AND A.ITEM_ID  = C.ITEM_ID(+)
+						]]>
+					<if test="sidx != ''">
+						ORDER BY ${sidx} ${sord}
+					</if>
+		
+				<if test="page != null">
+					) T0
+				)
+				WHERE PAGE = #{page,jdbcType=INTEGER}
+				</if>
+	</select>
+	
+	<select id="getOrderDetailGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+	<![CDATA[
+		SELECT COUNT(*) total_cnt, SUM(AMT) total_amt, SUM(VAT) total_vat, SUM(TOT_AMT) total_tot_amt
+		  FROM (SELECT   A.YMD          YMD,
+				         A.GUMAE_NO     GUMAE_NO,
+				         A.ITEM_ID      ITEM_ID,
+				         B.ITEM_NM      ITEM_NM,
+				         A.QTY          QTY,   
+				         A.DANGA        DANGA,   
+				         A.AMT          AMT,   
+				         A.VAT          VAT,
+				         A.AMT + A.VAT  TOT_AMT,   
+				         A.RATE         RATE,   
+				         A.DC_DANGA     DC_DANGA,
+				         A.DC_AMT       DC_AMT,
+				         A.DC_QTY       DC_QTY,   
+				         B.STANDARD     STANDARD,
+				         B.UNIT         UNIT,
+				         NVL2(B.COLOR,'R','B') COLOR, 
+				         C.MAVG_QTY,
+				         C.MQTY,
+				         C.PSB_QTY,
+				         (select /*+ index_desc(z SYS_C0017312) */ sale.f_sawon_nm(sawon_id) from sale.sale0405 z where z.cust_id = #{as_cust_id,jdbcType=VARCHAR} and z.rcust_id = #{as_rcust_id,jdbcType=VARCHAR} and z.item_id = a.item_id and rownum =1) as sawon_nm,
+				         A.REQ_QTY REQ_QTY
+				    FROM SALE_ON.SALE0204 A, 
+				         SALE.SALE0004 B,
+				         (
+				            SELECT E.ITEM_ID,
+				                   ROUND(A.QTY * B.JLIMIT)                                   MAVG_QTY,
+				                   NVL(C.MQTY,0) + NVL(D.MQTY,0)                             MQTY,
+				                   ROUND(A.QTY * B.JLIMIT) - (NVL(C.MQTY,0) + NVL(D.MQTY,0)) PSB_QTY
+				              FROM (
+				                    SELECT B.ITEM_ID
+				                      FROM SALE.SALE0203 A, SALE.SALE0204 B
+				                     WHERE A.CUST_ID  = #{as_cust_id,jdbcType=VARCHAR}
+				                       AND A.RCUST_ID = #{as_rcust_id,jdbcType=VARCHAR}
+				                       AND A.YMD      < TO_DATE(SUBSTR(#{ls_ymd,jdbcType=VARCHAR},1,6)||'01') 
+				                       AND A.YMD      >= ADD_MONTHS(TO_DATE(SUBSTR(#{ls_ymd,jdbcType=VARCHAR},1,6)||'01') ,-3)
+				                       AND A.GUMAE_NO = B.GUMAE_NO 
+				                    UNION
+				                    SELECT B.ITEM_ID
+				                      FROM SALE.SALE0203 A, SALE.SALE0204 B
+				                     WHERE A.CUST_ID  = #{as_cust_id,jdbcType=VARCHAR}
+				                       AND A.RCUST_ID = #{as_rcust_id,jdbcType=VARCHAR}
+				                       AND A.YMD      >= TO_DATE(SUBSTR(#{ls_ymd,jdbcType=VARCHAR},1,6)||'01')  
+				                       AND A.YMD      <= LAST_DAY(SUBSTR(#{ls_ymd,jdbcType=VARCHAR},1,6)||'01') 
+				                       AND A.GUMAE_NO = B.GUMAE_NO 
+				                    UNION
+				                    SELECT B.ITEM_ID
+				                      FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B
+				                     WHERE A.CUST_ID  = #{as_cust_id,jdbcType=VARCHAR}
+				                       AND A.RCUST_ID = #{as_rcust_id,jdbcType=VARCHAR}
+				                       AND A.YMD      >= TO_DATE(SUBSTR(#{ls_ymd,jdbcType=VARCHAR},1,6)||'01')  
+				                       AND A.YMD      <= LAST_DAY(SUBSTR(#{ls_ymd,jdbcType=VARCHAR},1,6)||'01') 
+				                       AND A.GUMAE_NO = B.GUMAE_NO 
+				                       AND A.RECEIPT_GB = '1' /*접수*/
+				                   ) E,
+				                   (
+				                    SELECT B.ITEM_ID,
+				                           ROUND((NVL(SUM(B.QTY),0)/sale.f_cust_gaip_months(TO_DATE(#{ls_ymd,jdbcType=VARCHAR},'YYYYMMDD'),#{as_cust_id,jdbcType=VARCHAR}))) QTY
+				                      FROM SALE.SALE0203 A, SALE.SALE0204 B
+				                     WHERE A.CUST_ID  = #{as_cust_id,jdbcType=VARCHAR}
+				                       AND A.RCUST_ID = #{as_rcust_id,jdbcType=VARCHAR}
+				                       AND A.YMD      < TO_DATE(SUBSTR(#{ls_ymd,jdbcType=VARCHAR},1,6)||'01') 
+				                       AND A.YMD      >= ADD_MONTHS(TO_DATE(SUBSTR(#{ls_ymd,jdbcType=VARCHAR},1,6)||'01') ,-3)
+				                       AND A.GUMAE_NO = B.GUMAE_NO 
+				                     GROUP BY B.ITEM_ID
+				                   ) A,
+				                   (
+				                    SELECT (JUMUN_LIMIT /100) JLIMIT FROM SALE.SALE0003 WHERE CUST_ID = #{as_cust_id,jdbcType=VARCHAR}
+				                   ) B,
+				                   (
+				                    SELECT B.ITEM_ID,
+				                           NVL(SUM(B.QTY),0) MQTY
+				                      FROM SALE.SALE0203 A, SALE.SALE0204 B
+				                     WHERE A.CUST_ID  = #{as_cust_id,jdbcType=VARCHAR}
+				                       AND A.RCUST_ID = #{as_rcust_id,jdbcType=VARCHAR}
+				                       AND A.YMD      >= TO_DATE(SUBSTR(#{as_avg_month,jdbcType=VARCHAR},1,6)||'01')  
+				                       AND A.YMD      <= LAST_DAY(SUBSTR(#{as_avg_month,jdbcType=VARCHAR},1,6)||'01') 
+				                       AND A.GUMAE_NO = B.GUMAE_NO 
+				                     GROUP BY B.ITEM_ID
+				                   ) C,
+				                   (
+				                    SELECT B.ITEM_ID,
+				                           NVL(SUM(B.QTY),0) MQTY
+				                      FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B
+				                     WHERE A.CUST_ID  = #{as_cust_id,jdbcType=VARCHAR}
+				                       AND A.RCUST_ID = #{as_rcust_id,jdbcType=VARCHAR}
+				                       AND A.YMD      >= TO_DATE(SUBSTR(#{as_avg_month,jdbcType=VARCHAR},1,6)||'01')  
+				                       AND A.YMD      <= LAST_DAY(SUBSTR(#{as_avg_month,jdbcType=VARCHAR},1,6)||'01') 
+				                       AND A.GUMAE_NO = B.GUMAE_NO 
+				                       AND A.RECEIPT_GB = '1' /*접수*/
+				                       AND A.WIBAN_ORDER_CONF_YN    <> '2' /*위반주문 지점장 반려한것빼고 */ 
+				                     GROUP BY B.ITEM_ID
+				                   ) D
+				             WHERE E.ITEM_ID = A.ITEM_ID(+)
+				               AND E.ITEM_ID = C.ITEM_ID(+)
+				               AND E.ITEM_ID = D.ITEM_ID(+)         
+				         ) C
+				   WHERE A.ITEM_ID  = B.ITEM_ID
+				     AND A.GUMAE_NO = #{as_gumae_no,jdbcType=VARCHAR}
+				     AND A.YMD      = TO_DATE(#{ls_ymd,jdbcType=VARCHAR})
+				     AND A.ITEM_ID  = C.ITEM_ID(+))
+	]]>
+	</select>
+	
+	<select id="getCustomerInfo" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+	<![CDATA[
+		 SELECT A.CREDIT_LIMIT_AMT,
+		 		NVL(F.BEFORE_AMT,0)          BEFORE_AMT,
+		        NVL(F.MISU_AMT,0)            SALE_AMT,
+		        NVL(F.BEFORE_AMT,0) + NVL(F.MISU_AMT,0) - NVL(F.SU_AMT,0)  CUR_AMT,
+		        NVL(F.SU_AMT,0)              SU_AMT,
+		        NVL(I.CASH_AMT,0)             CASH_AMT,
+		        NVL(L.BILL_010_AMT,0) + NVL(L.BILL_020_AMT,0) + NVL(L.BILL_025_AMT,0) + NVL(L.BILL_030_AMT,0) + NVL(L.BILL_035_AMT,0) + NVL(L.BILL_040_AMT,0) + NVL(L.BILL_100_AMT,0) + NVL(L.BILL_900_AMT,0)   BILL_AMT,
+		        NVL(L.BILL_010_AMT,0) + NVL(L.BILL_020_AMT,0) + NVL(L.BILL_030_AMT,0) + NVL(L.BILL_100_AMT,0) + NVL(L.BILL_900_AMT,0)               JASU_AMT,
+		        NVL(L.BILL_025_AMT,0) + NVL(L.BILL_035_AMT,0) + NVL(L.BILL_040_AMT,0)                                                               TASU_AMT,
+		        NVL(H.SALE_DAMBO_AMT,0)      SALE_DAMBO_AMT,
+		        NVL(K.JUMUN_AMT,0)           JUMUN_AMT,
+		        NVL(K.JUMUN_AMT,0)           JUMUN_AMT_O ,
+		        NVL(A.YEONDAE_3,'N')         YEONDAE_3,
+		        NVL(A.YEONDAE_2,'N')         YEONDAE_2,
+		        CASE A.YEONDAE_2 WHEN 'Y' THEN (SELECT TO_NUMBER(BIGO)
+		                                          FROM SALE.SALE0001
+		                                         WHERE CODE_GB = '4001' 
+		                                           AND CODE1 = '04') ELSE 0 END      DAMBO,
+		        H.BILL_CNT                   BILL_CNT,
+		        H.BILL_KIND                  BILL_KIND
+		   FROM SALE.SALE0003 A,
+		        ( SELECT CUST_ID , 
+		                 SUM(BEFORE_AMT)  BEFORE_AMT,
+		                 SUM(MISU_AMT)    MISU_AMT,
+		                 SUM(SU_AMT)      SU_AMT
+		            FROM SALE.SALE0306
+		           WHERE YMD        = TO_DATE(TO_CHAR(SYSDATE,'YYYY/MM')||'/01','YYYY/MM/DD')
+		             AND CUST_ID    = #{as_cust_id,jdbcType=VARCHAR}
+		           GROUP BY CUST_ID
+		        ) F,
+		        ( SELECT X.CUST_ID, NVL(SUM(X.SALE_DAMBO_AMT),0) SALE_DAMBO_AMT, COUNT(BILL_GB) BILL_CNT,
+		                 (SELECT (SELECT CODE1_NM FROM SALE.SALE0001 WHERE CODE_GB = '0022' AND CODE1 = X.BILL_GB ) BILL_GB
+		                    FROM SALE.SALE0404 X
+		                   WHERE X.CUST_ID    = #{as_cust_id,jdbcType=VARCHAR}
+		                     AND NVL(X.CHULGO_YMD,TO_DATE('2999/01/01','YYYY/MM/DD')) = TO_DATE('2999/01/01','YYYY/MM/DD')
+		                     AND X.DAM_BOYU_STAT = 'Y'
+		                     AND ROWNUM = 1)  BILL_KIND
+		            FROM SALE.SALE0404 X
+		           WHERE X.CUST_ID    = #{as_cust_id,jdbcType=VARCHAR}
+		             AND NVL(X.CHULGO_YMD,TO_DATE('2999/01/01','YYYY/MM/DD')) = TO_DATE('2999/01/01','YYYY/MM/DD')
+		             AND X.DAM_BOYU_STAT = 'Y'
+		           GROUP BY X.CUST_ID 
+		        ) H,
+		        ( SELECT X.CUST_ID , NVL(SUM(CASH_AMT),0) + NVL(SUM(BILL_AMT),0) CASH_AMT
+		            FROM SALE.SALE0401 X
+		           WHERE X.CUST_ID = #{as_cust_id,jdbcType=VARCHAR}
+		             AND X.YMD BETWEEN TO_DATE(TO_CHAR(SYSDATE,'YYYY/MM')||'/01','YYYY/MM/DD')
+		                           AND LAST_DAY(SYSDATE)
+		           GROUP BY X.CUST_ID 
+		        ) I,
+		        ( SELECT X.CUST_ID , SUM(NVL(X.AMT_SUM,0) + NVL(X.VAT_SUM,0))  JUMUN_AMT
+		            FROM SALE_ON.SALE0203 X
+		           WHERE X.CUST_ID = #{as_cust_id,jdbcType=VARCHAR}
+		             AND X.YMD BETWEEN TO_DATE(TO_CHAR(SYSDATE,'YYYY/MM')||'/01','YYYY/MM/DD')
+		                           AND LAST_DAY(SYSDATE)
+		           GROUP BY X.CUST_ID 
+		        ) K,
+		        (
+		             SELECT X.CUST_ID        CUST_ID ,
+		                   NVL(SUM(DECODE(Y.BILL_GB,'010',Y.AMT)),0)  BILL_010_AMT,
+		                 NVL(SUM(DECODE(Y.BILL_GB,'020',Y.AMT)),0)  BILL_020_AMT,
+		                 NVL(SUM(DECODE(Y.BILL_GB,'025',Y.AMT)),0)  BILL_025_AMT,
+		                 NVL(SUM(DECODE(Y.BILL_GB,'030',Y.AMT)),0)  BILL_030_AMT,
+		                 NVL(SUM(DECODE(Y.BILL_GB,'035',Y.AMT)),0)  BILL_035_AMT,
+		                 NVL(SUM(DECODE(Y.BILL_GB,'040',Y.AMT)),0)  BILL_040_AMT,
+		                 NVL(SUM(DECODE(Y.BILL_GB,'100',Y.AMT)),0)  BILL_100_AMT,
+		                 NVL(SUM(DECODE(Y.BILL_GB,'900',Y.AMT)),0)  BILL_900_AMT
+		            FROM SALE.SALE0401 X ,
+		                    SALE.SALE0402 Y
+		           WHERE X.YMD       = Y.YMD
+		             AND X.JUNPYO_NO = Y.JUNPYO_NO 
+		             AND Y.END_YMD  >= SYSDATE
+		           GROUP BY X.CUST_ID
+		          ) L
+		  WHERE A.CUST_ID    = #{as_cust_id,jdbcType=VARCHAR}
+		    AND A.CUST_ID    = F.CUST_ID(+)
+		    AND A.CUST_ID    = H.CUST_ID(+)
+		    AND A.CUST_ID    = I.CUST_ID(+)
+		    AND A.CUST_ID    = K.CUST_ID(+)
+		    AND A.CUST_ID    = L.CUST_ID(+)
+	]]>
+	</select>
+	
+	<select id="getApprovalInfo" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+	<![CDATA[
+		  SELECT A.GUMAE_NO        GUMAE_NO, 
+		         A.GUMAE_GB        GUMAE_GB, 
+		         A.YMD             YMD,   
+		         A.SAWON_ID        SAWON_ID,
+		         G.DEPT_NM 		   DEPT_NM,
+		         A.RSAWON_ID       RSAWON_ID,
+		         H.DEPT_NM 		   RDEPT_NM,
+		         A.CUST_ID         CUST_ID,   
+		         B.CUST_GB1        CUST_GB1,
+		         A.RCUST_ID        RCUST_ID,   
+		         D.CUST_GB1        RCUST_GB1,
+		         (SELECT CODE1_NM FROM SALE.SALE0001 WHERE CODE_GB = '0020' AND CODE1 = D.CUST_GB1) RCUST_GBNM,
+		         A.AMT_SUM         AMT_SUM,   
+		         A.VAT_SUM         VAT_SUM,   
+		         A.BIGO            BIGO,
+		         A.GYULJAE_GB      GYULJAE_GB,   
+		         A.TAX_TYPE        TAX_TYPE,   
+		         A.DECIMAL_PROC    DECIMAL_PROC,   
+		         A.CHAMJO_NM       CHAMJO_NM,   
+		         A.CHAMJO_RANK     CHAMJO_RANK,   
+		         B.CUST_NM         CUST_NM,
+		         D.CUST_NM         RCUST_NM,
+		         C.SAWON_NM        SAWON_NM,
+		         E.SAWON_NM        RSAWON_NM,
+		         A.GUBUN           GUBUN,
+		         A.ACCEPT_YN       ACCEPT_YN,
+		         NVL(A.LIMIT_YN,'N')  LIMIT_YN,
+		         CASE WHEN A.LIMIT_YN = 'Y' THEN '여신초과' 
+		              WHEN A.LIMIT_YN = 'N' THEN '여신이내' ELSE '담보예외' END   LIMIT_DESC,
+		         A.INPUT_YMD       INPUT_YMD,
+		         A.INPUT_ID        INPUT_ID,       
+		         F.SAWON_NM        ISAWON_NM,
+		         sale.F_RATE_DAY_BEFOREMONTH(to_char(add_months(sysdate,-1),'yyyymm'),A.CUST_ID) AS CONTROL_RATE_DAY,
+		         A.SLIP_GB ,
+		         A.WIBAN_CONF_DTM
+		    FROM SALE_ON.SALE0203 A , 
+		         SALE.SALE0003 B, 
+		         SALE.SALE0007 C, 
+		         SALE.SALE0003 D, 
+		         SALE.SALE0007 E, 
+		         SALE.SALE0007 F,
+		         SALE.SALE0008 G,
+         		 SALE.SALE0008 H
+		   WHERE A.CUST_ID   = B.CUST_ID
+		     AND A.SAWON_ID  = C.SAWON_ID
+		     AND A.RCUST_ID  = D.CUST_ID(+)
+		     AND A.RSAWON_ID = E.SAWON_ID(+)
+		     AND A.INPUT_ID  = F.SAWON_ID(+)
+		     AND A.GUMAE_NO = #{as_gumae_no,jdbcType=VARCHAR}
+		     AND A.YMD      = TO_DATE(#{ls_ymd,jdbcType=VARCHAR})
+		     AND C.DEPT_CD = G.DEPT_CD
+     		 AND E.DEPT_CD = H.DEPT_CD
+	]]>
+	</select>
+	
+	<select id="getPromiseGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+	<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+    	</if>
+    	<![CDATA[
+							SELECT TO_CHAR(TO_DATE(A.YMD),'YYYY-MM-DD') REQ_DATE, 
+							       TO_CHAR(TO_DATE(A.PDATE),'YYYY-MM-DD') PROMISE_DATE, 
+							       CASE WHEN A.RECEIPT_GB = '1' THEN '접수'
+							            WHEN A.RECEIPT_GB = '2' THEN '승인'
+							            WHEN A.RECEIPT_GB = '3' THEN '반려' ELSE '    ' END AS STATUS, 
+							       A.PBIGO PROMISE_BIGO,
+							       A.RETURN_DESC RETURN_DESC
+							  FROM SALE_ON.SALE0203 A
+							 WHERE A.CUST_ID = #{as_cust_id}
+							   AND TO_CHAR(A.INPUT_YMD, 'YYYYMMDDHH24MI') BETWEEN #{adt_fr_datetime,jdbcType=DATE} AND #{adt_to_datetime,jdbcType=DATE}
+							   AND A.YMD BETWEEN TO_DATE(#{adt_fr_date}) AND TO_DATE(#{adt_to_date})
+							   AND (A.PDATE IS NOT NULL OR A.WIBAN_ORDER_REQ_YN = 'Y')
+							   AND DECODE(A.WIBAN_ORDER_REQ_YN,'Y',A.WIBAN_ORDER_CONF_YN,'9') IN DECODE(A.WIBAN_ORDER_REQ_YN,'Y','1','9')
+							   ]]>
+					<if test="sidx != ''">
+						ORDER BY ${sidx} ${sord}
+					</if>
+		
+				<if test="page != null">
+					) T0
+				)
+				WHERE PAGE = #{page,jdbcType=INTEGER}
+				</if>
+	</select>
+	
+	<select id="getPromiseGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+	<![CDATA[
+		SELECT COUNT(*) total_cnt
+		  FROM
+				(SELECT TO_CHAR(TO_DATE(A.YMD),'YYYY-MM-DD') REQ_DATE, 
+				       TO_CHAR(TO_DATE(A.PDATE),'YYYY-MM-DD') PROMISE_DATE, 
+				       CASE WHEN A.RECEIPT_GB = '1' THEN '접수'
+				            WHEN A.RECEIPT_GB = '2' THEN '승인'
+				            WHEN A.RECEIPT_GB = '3' THEN '반려' ELSE '    ' END AS STATUS, 
+				       A.PBIGO PROMISE_BIGO,
+				       A.RETURN_DESC RETURN_DESC
+				  FROM SALE_ON.SALE0203 A
+				 WHERE A.CUST_ID = #{as_cust_id}
+				   AND TO_CHAR(A.INPUT_YMD, 'YYYYMMDDHH24MI') BETWEEN #{adt_fr_datetime,jdbcType=DATE} AND #{adt_to_datetime,jdbcType=DATE}
+				   AND A.YMD BETWEEN TO_DATE(#{adt_fr_date}) AND TO_DATE(#{adt_to_date})
+				   AND (A.PDATE IS NOT NULL OR A.WIBAN_ORDER_REQ_YN = 'Y'))
+				   AND A.WIBAN_ORDER_CONF_YN = '1'
+	]]>
+	</select>
+	
+	<!-- 20150430 미승인금액(실조건아님) : 일자fr,to,거래처,주문구분,sfa일때는 위반주문승인만-->
+	<select id="getUnapprovedAmount" parameterType="hashmap" resultType="java.lang.String">
+	<![CDATA[
+		SELECT (SUM(B.AMT) + SUM(B.VAT)) REAMT
+		  FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B
+		 WHERE A.GUMAE_NO    = B.GUMAE_NO
+		   AND A.RECEIPT_GB = '1'
+		   AND TO_CHAR(A.INPUT_YMD, 'YYYYMMDDHH24MI') BETWEEN #{adt_fr_datetime,jdbcType=DATE} AND #{adt_to_datetime,jdbcType=DATE}
+		   AND A.YMD BETWEEN TO_DATE(#{adt_fr_date}) AND TO_DATE(#{adt_to_date})
+		   AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+		   AND A.SLIP_GB    = #{as_slip_gb,jdbcType=VARCHAR}   
+		   AND DECODE (A.SLIP_GB, '2', DECODE(A.WIBAN_KIND,'0','1',A.WIBAN_ORDER_CONF_YN),'1') = '1'
+	]]>
+	</select>
+	
+	<!-- 20150430 미승인금액(실조건) 금액임 -->
+	<select id="getUnapprovedAmountReal" parameterType="hashmap" resultType="java.lang.String">
+	<![CDATA[
+				SELECT sum(a.amt_sum +  a.vat_sum)  rem_amt_real
+				  FROM SALE_ON.SALE0203 A, SALE.SALE0003 B, SALE.SALE0003 C, SALE.SALE0001 E,
+				       (  SELECT *
+				            FROM (
+						          SELECT A.GUMAE_NO,
+						                 MIN(C.PSB_QTY) PSB_QTY,
+						                 TO_CHAR(SIGN(SUM(decode(A.PART_GB,'01',0,1)))) AS PART_GB
+						            FROM (            
+						                   SELECT A.GUMAE_NO,
+						                          A.CUST_ID,
+						                          B.ITEM_ID,
+						                          SALE.F_GET_PART_01(A.CUST_ID,A.RCUST_ID,B.ITEM_ID) AS PART_GB
+						                     FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B
+						                    WHERE A.GUMAE_NO   = B.GUMAE_NO
+						                      AND A.RECEIPT_GB = '1'
+						                      ]]>
+											   <!-- 20150430 주문일/승인일 조건 구분 -->
+											   <choose>
+											   	<when test="searchType eq 'order'.toString()"> <!-- 주문일 -->
+											   		AND TO_CHAR(A.INPUT_YMD, 'YYYYMMDDHH24MI') BETWEEN #{adt_fr_datetime,jdbcType=DATE} AND #{adt_to_datetime,jdbcType=DATE}
+						                      		AND A.YMD BETWEEN TO_DATE(#{adt_fr_date}) AND TO_DATE(#{adt_to_date})
+											   	</when>
+											   	<when test="searchType eq 'approval'.toString()"> <!-- 승인일 -->
+											   		AND A.ADATE BETWEEN #{adt_fr_datetime,jdbcType=DATE}||'00' AND #{adt_to_datetime,jdbcType=DATE}||'59' 
+											   	</when>
+											   </choose>
+											   <![CDATA[ 									                      
+						                      AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+						                      AND A.SLIP_GB    = #{as_slip_gb,jdbcType=VARCHAR}
+						                      AND NVL(A.LIMIT_YN,'N')    IN (${as_limit_yn})
+						                 ) A,
+						                 (
+						                    SELECT A.CUST_ID, E.ITEM_ID,
+						                           ROUND(A.QTY * E.JLIMIT)                                   MAVG_QTY,
+						                           NVL(C.MQTY,0) + NVL(D.MQTY,0)                             MQTY,
+						                           ROUND(A.QTY * E.JLIMIT) - (NVL(C.MQTY,0) + NVL(D.MQTY,0)) PSB_QTY
+						                      FROM (
+						                            SELECT /*+ USE_NL(A B C)*/ A.CUST_ID, B.ITEM_ID, (C.JUMUN_LIMIT /100) JLIMIT
+						                              FROM SALE.SALE0203 A, SALE.SALE0204 B, SALE.SALE0003 C
+						                             WHERE A.YMD      < TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+						                               AND A.YMD      >= ADD_MONTHS(TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01') ,-3)
+						                               AND A.GUMAE_NO = B.GUMAE_NO 
+						                               AND A.CUST_ID  = C.CUST_ID(+)
+						                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+						                            UNION
+						                            SELECT /*+ USE_NL(A B C)*/ A.CUST_ID, B.ITEM_ID, (C.JUMUN_LIMIT /100) JLIMIT
+						                              FROM SALE.SALE0203 A, SALE.SALE0204 B, SALE.SALE0003 C
+						                             WHERE A.YMD      >= TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01')  
+						                               AND A.YMD      <= LAST_DAY(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+						                               AND A.GUMAE_NO = B.GUMAE_NO 
+						                               AND A.CUST_ID  = C.CUST_ID(+)
+						                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+						                            UNION
+						                            SELECT A.CUST_ID, B.ITEM_ID, (C.JUMUN_LIMIT /100) JLIMIT
+						                              FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B, SALE.SALE0003 C
+						                             WHERE A.YMD      >= TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01')  
+						                               AND A.YMD      <= LAST_DAY(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+						                               AND A.GUMAE_NO = B.GUMAE_NO 
+						                               AND A.RECEIPT_GB = '1'
+						                               AND A.CUST_ID  = C.CUST_ID(+)
+						                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+						                           ) E,
+						                           (
+						                            SELECT /*+ USE_NL(A B)*/ A.CUST_ID, B.ITEM_ID,
+						                                   ROUND((NVL(SUM(B.QTY),0)/3)) QTY
+						                              FROM SALE.SALE0203 A, SALE.SALE0204 B
+						                             WHERE A.YMD      < TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+						                               AND A.YMD      >= ADD_MONTHS(TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01') ,-3)
+						                               AND A.GUMAE_NO = B.GUMAE_NO 
+						                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+						                             GROUP BY A.CUST_ID, B.ITEM_ID
+						                           ) A,
+						                           (
+						                            SELECT A.CUST_ID, B.ITEM_ID,
+						                                   NVL(SUM(B.QTY),0) MQTY
+						                              FROM SALE.SALE0203 A, SALE.SALE0204 B
+						                             WHERE A.YMD      >= TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01')  
+						                               AND A.YMD      <= LAST_DAY(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+						                               AND A.GUMAE_NO = B.GUMAE_NO 
+						                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+						                             GROUP BY A.CUST_ID, B.ITEM_ID
+						                           ) C,
+						                           (
+						                            SELECT A.CUST_ID, B.ITEM_ID,
+						                                   NVL(SUM(B.QTY),0) MQTY
+						                              FROM SALE_ON.SALE0203 A, SALE_ON.SALE0204 B
+						                             WHERE A.YMD      >= TO_DATE(#{as_avg_month,jdbcType=VARCHAR}||'01')  
+						                               AND A.YMD      <= LAST_DAY(#{as_avg_month,jdbcType=VARCHAR}||'01') 
+						                               AND A.GUMAE_NO = B.GUMAE_NO 
+						                               AND A.RECEIPT_GB = '1'
+						                               AND A.CUST_ID    LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+						                             GROUP BY A.CUST_ID, B.ITEM_ID
+						                           ) D
+						                     WHERE E.CUST_ID = A.CUST_ID(+)
+						                       AND E.ITEM_ID = A.ITEM_ID(+)
+						                       AND E.CUST_ID = C.CUST_ID(+)
+						                       AND E.ITEM_ID = C.ITEM_ID(+)
+						                       AND E.CUST_ID = D.CUST_ID(+)
+						                       AND E.ITEM_ID = D.ITEM_ID(+)                                
+						                 ) C
+						           WHERE A.CUST_ID  = C.CUST_ID(+)
+						             AND A.ITEM_ID  = C.ITEM_ID(+)             
+						           GROUP BY A.GUMAE_NO           
+						       )
+				         WHERE SIGN(NVL(PSB_QTY,0)) IN (DECODE(#{as_psb_gb,jdbcType=VARCHAR},'0', 0,'1',0,'2',-1),
+				                                        DECODE(#{as_psb_gb,jdbcType=VARCHAR},'0', 1,'1',1),
+				                                        DECODE(#{as_psb_gb,jdbcType=VARCHAR},'0',-1))
+				    
+				       ) D 
+				 WHERE A.CUST_ID              = B.CUST_ID
+				   AND A.RCUST_ID             = C.CUST_ID
+				   AND A.RECEIPT_GB           = '1'
+		                   ]]>
+				   <!-- 20150430 주문일/승인일 조건 구분 -->
+				   <choose>
+				   	<when test="searchType eq 'order'.toString()"> <!-- 주문일 -->
+				   		AND TO_CHAR(A.INPUT_YMD, 'YYYYMMDDHH24MI') BETWEEN #{adt_fr_datetime,jdbcType=DATE} AND #{adt_to_datetime,jdbcType=DATE}
+		                   		AND A.YMD BETWEEN TO_DATE(#{adt_fr_date}) AND TO_DATE(#{adt_to_date})
+				   	</when>
+				   	<when test="searchType eq 'approval'.toString()"> <!-- 승인일 -->
+				   		AND A.ADATE BETWEEN #{adt_fr_datetime,jdbcType=DATE}||'00' AND #{adt_to_datetime,jdbcType=DATE}||'59' 
+				   	</when>
+				   </choose>
+				   <![CDATA[ 
+				   AND A.CUST_ID              LIKE '%'||#{as_cust_id,jdbcType=VARCHAR}||'%'
+				   AND A.SLIP_GB              = #{as_slip_gb,jdbcType=VARCHAR}							   
+				   AND DECODE (A.SLIP_GB, '2', DECODE(A.WIBAN_KIND,'0','1',A.WIBAN_ORDER_CONF_YN),'1') = '1'  
+				   AND NVL(A.LIMIT_YN,'N')    IN (${as_limit_yn})
+				   AND A.WIBAN_KIND  LIKE #{as_wiban_kind,jdbcType=VARCHAR}
+				   AND DECODE(A.WIBAN_ORDER_REQ_YN,'Y',A.WIBAN_ORDER_CONF_YN,'9') IN DECODE(A.WIBAN_ORDER_REQ_YN,'Y','1','9')
+				   AND B.PRE_DEPOSIT LIKE #{as_pre_deposit,jdbcType=VARCHAR}
+				   AND A.GUMAE_NO             = D.GUMAE_NO(+)
+				   ]]>
+				   <!-- 20150130 간납구분 로직 수정 -->
+				   <choose>
+				   	<when test="as_part_gb !=null and as_part_gb eq '1'.toString()"> <!-- 약국분 -->
+				   		AND C.CUST_GB1 = '05'
+				   	</when>
+				   	<when test="as_part_gb !=null and as_part_gb eq '0'.toString()"> <!-- 일반 -->
+				   		AND C.CUST_GB1 != '05'
+				   	</when>
+				   </choose>
+				   <![CDATA[
+				   AND C.CUST_GB1 = E.CODE1
+				   AND E.CODE_GB = '0020'
+		                       ]]>
+	</select>
+	
+	
+	<select id="getStoreLocCount" resultType="java.lang.Integer">
+	<![CDATA[
+		SELECT COUNT(*) total_cnt
+		  FROM sale.sale0305
+		 WHERE YMD = TO_Date(TO_CHAR(SYSDATE, 'YYYYMM')||'01', 'YYYYMMDD') 
+		   AND STORE_LOC = '01'
+	]]>
+	</select>
+	
+	<select id="getCreditLimit" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO" resultType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+	<![CDATA[
+		SELECT NVL(F.BEFORE_AMT,0) + NVL(F.MISU_AMT,0) - NVL(F.SU_AMT,0) + NVL(L.BILL_010_AMT,0) + NVL(L.BILL_020_AMT,0) + NVL(L.BILL_030_AMT,0) + NVL(L.BILL_100_AMT,0) + NVL(L.BILL_900_AMT,0) tot_credit       
+                        ,A.credit_limit_amt
+          FROM SALE.SALE0003 A,
+                ( SELECT CUST_ID , 
+                            SUM(BEFORE_AMT)  BEFORE_AMT,
+                            SUM(MISU_AMT)    MISU_AMT,
+                            SUM(SU_AMT)      SU_AMT
+                      FROM SALE.SALE0306
+                    WHERE YMD        = TO_DATE(SUBSTR(#{req_date,jdbcType=VARCHAR}, 0, 7)||'/01','YYYY/MM/DD')
+                       AND CUST_ID    = #{cust_id,jdbcType=VARCHAR}
+                    GROUP BY CUST_ID
+                ) F,
+                (
+                       SELECT  X.CUST_ID        CUST_ID ,
+                                   NVL(SUM(DECODE(Y.BILL_GB,'010',Y.AMT)),0)  BILL_010_AMT,
+                                    NVL(SUM(DECODE(Y.BILL_GB,'020',Y.AMT)),0)  BILL_020_AMT,
+                                    NVL(SUM(DECODE(Y.BILL_GB,'025',Y.AMT)),0)  BILL_025_AMT,
+                                    NVL(SUM(DECODE(Y.BILL_GB,'030',Y.AMT)),0)  BILL_030_AMT,
+                                    NVL(SUM(DECODE(Y.BILL_GB,'035',Y.AMT)),0)  BILL_035_AMT,
+                                    NVL(SUM(DECODE(Y.BILL_GB,'040',Y.AMT)),0)  BILL_040_AMT,
+                                    NVL(SUM(DECODE(Y.BILL_GB,'100',Y.AMT)),0)  BILL_100_AMT,
+                                    NVL(SUM(DECODE(Y.BILL_GB,'900',Y.AMT)),0)  BILL_900_AMT
+                      FROM SALE.SALE0401 X ,
+                                SALE.SALE0402 Y
+                    WHERE X.YMD       = Y.YMD
+                       AND X.JUNPYO_NO = Y.JUNPYO_NO 
+                       AND Y.END_YMD  >= SYSDATE
+                    GROUP BY X.CUST_ID
+                   ) L
+        WHERE A.CUST_ID    = #{cust_id,jdbcType=VARCHAR}
+           AND A.CUST_ID    = F.CUST_ID(+)
+           AND A.CUST_ID    = L.CUST_ID(+)
+	]]>
+	</select> 
+		
+	<select id="getBudongFlag" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO" resultType="java.lang.String">
+	<![CDATA[
+		SELECT NVL(BUDONG_YN,'N')
+          FROM SALE.SALE0003 
+         WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR}
+	]]>
+	</select>
+	
+	<select id="getItemInfo" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO" resultType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+	<![CDATA[
+	   SELECT NVL(CHUL_YN,'N') CHUL_YN, NVL(USE_YN,'N') USE_YN
+		 FROM SALE.SALE0004
+		WHERE ITEM_ID IN (SELECT ITEM_ID
+						    FROM SALE_ON.SALE0204
+						   WHERE YMD = #{req_date,jdbcType=VARCHAR}
+							 AND GUMAE_NO = #{gumae_no,jdbcType=VARCHAR})
+		  AND (NVL(CHUL_YN,'N') = 'Y' OR  NVL(USE_YN,'N') = 'N')
+		  AND ROWNUM = 1
+	]]>
+	</select>
+	
+	<select id="getDangaQtyAmtErrJumun" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO" resultType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+	<![CDATA[
+	    SELECT a.item_id||' '||B.ITEM_NM DANGGA_QTY_AMT_ERRVALUE
+	      FROM (
+				select a.item_id 
+				  from sale0204 a,sale0203 b
+				 where a.gumae_no = b.gumae_no 
+				   and a.gumae_no = #{gumae_no,jdbcType=VARCHAR}
+				   and a.qty * a.danga <> a.amt
+				   and b.cust_id like '11%'
+				   and rownum = 1
+				union     
+				select  a.item_id 
+				  from sale0204 a,sale0203 b
+				 where a.gumae_no = b.gumae_no 
+				   and a.gumae_no = #{gumae_no,jdbcType=VARCHAR}
+				   and a.qty * a.danga <> a.amt + a.vat
+				   and substr(b.cust_id,1,1) in ('3','4')
+				   and rownum = 1
+              )	A, SALE.SALE0004 B
+           WHERE A.ITEM_ID = B.ITEM_ID
+              			    
+	]]>
+	</select>
+	
+	<select id="getReceiptGb" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO" resultType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+	<![CDATA[
+		SELECT RECEIPT_GB, NVL(ACCEPT_YN,'X') ACCEPT_YN, GUMAE_NOT AS APP_NO,TO_CHAR(YMDT, 'YYYYMMDD') AS YMDT 
+		  FROM SALE_ON.SALE0203
+		 WHERE GUMAE_NO = #{gumae_no,jdbcType=VARCHAR}
+	]]>
+	</select> 
+	
+	<select id="getThisorderAmt" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO" resultType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+	<![CDATA[
+		SELECT SUM(AMT_SUM) + SUM(VAT_SUM) AS thisorder_amt
+		  FROM SALE_ON.SALE0203
+		 WHERE GUMAE_NO = #{gumae_no,jdbcType=VARCHAR}
+	]]>
+	</select>	
+	
+	<!-- 승인번호 생성 프로시저 -->
+	<parameterMap type="hashmap" id="appNo">
+		<parameter property="tableType" jdbcType="VARCHAR" javaType="string" mode="IN" />
+		<parameter property="app_date" jdbcType="VARCHAR" javaType="string" mode="IN" />
+		<parameter property="max" jdbcType="INTEGER" javaType="string" mode="OUT" />
+	</parameterMap>
+	<select id="getProcedureCall" statementType="CALLABLE" parameterMap="appNo">
+		{call SALE.SP_SYS100C_MAX_VALUE( ?, ?, null, null, null, null,?)}
+	</select>
+	
+	<update id="updateOrderMasterApproval" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+		UPDATE SALE_ON.SALE0203 A
+		   SET GUMAE_NOT = #{app_no,jdbcType=VARCHAR},
+			   YMDT = #{app_date,jdbcType=VARCHAR},
+			   ACCEPT_YN = 'S',
+			   RECEIPT_GB = '2',
+			   RETURN_DESC = #{return_desc,jdbcType=VARCHAR},
+			   ASAWON_ID = #{emp_code,jdbcType=VARCHAR},
+			   ADATE = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+			   AMT_SUM = (SELECT SUM(amt) FROM SALE_ON.SALE0204 WHERE GUMAE_NO = a.gumae_no),
+			   VAT_SUM = (SELECT SUM(vat) FROM SALE_ON.SALE0204 WHERE GUMAE_NO = a.gumae_no)
+		 WHERE GUMAE_NO = #{gumae_no,jdbcType=VARCHAR}
+	</update>
+	
+	<update id="updateOrderStock" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+		UPDATE SALE.SALE0305 M
+		   SET CHULGO_QTYST = NVL(CHULGO_QTYST,0) - (SELECT SUM(REQ_QTY) FROM SALE_ON.SALE0204 WHERE YMD = #{req_date,jdbcType=VARCHAR} AND GUMAE_NO = #{gumae_no,jdbcType=VARCHAR} AND ITEM_ID = M.ITEM_ID) 
+		 WHERE YMD = #{jaego,jdbcType=VARCHAR}
+		   AND ITEM_ID IN (SELECT ITEM_ID FROM SALE_ON.SALE0204 WHERE YMD = #{req_date,jdbcType=VARCHAR} AND GUMAE_NO = #{gumae_no,jdbcType=VARCHAR})
+		   AND STORE_LOC = '01'
+	</update>
+	
+	<insert id="insertTransferOrderMaster" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+		INSERT INTO SALE.SALE0203(GUMAE_NO, GUMAE_GB, YMD, SAWON_ID, CUST_ID, RSAWON_ID, RCUST_ID, GYULJAE_GB, TAX_TYPE, 
+								DECIMAL_PROC, CHAMJO_NM, CHAMJO_RANK, AMT_SUM, VAT_SUM, BIGO, BALJU_YN, CHULGO_YN, NAPGI_YMD, 
+								NAPGI_TYPE, CONVEY_TYPE, UPDATE_YN, GUBUN, ACCEPT_YN, INPUT_ID, INPUT_YMD, GUMAE_NOT, YMDT,SLIP_GB)
+			SELECT GUMAE_NOT, GUMAE_GB, YMDT, SAWON_ID, CUST_ID, RSAWON_ID, RCUST_ID, GYULJAE_GB, TAX_TYPE, 
+					 DECIMAL_PROC, CHAMJO_NM, CHAMJO_RANK, AMT_SUM, VAT_SUM, BIGO, BALJU_YN, CHULGO_YN, NAPGI_YMD, 
+					 NAPGI_TYPE, CONVEY_TYPE, UPDATE_YN, GUBUN, ACCEPT_YN, INPUT_ID, INPUT_YMD, GUMAE_NOT, YMDT,SLIP_GB
+			  FROM SALE_ON.SALE0203 
+			 WHERE YMD = #{req_date,jdbcType=VARCHAR} AND GUMAE_NO = #{gumae_no,jdbcType=VARCHAR}
+	</insert>
+	
+	<insert id="insertTransferOrderDetail" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+		INSERT INTO SALE.SALE0204(YMD, GUMAE_NO, INPUT_SEQ, ITEM_ID, QTY, DANGA, AMT, VAT, RATE, DC_AMT, BIGO, DEAL_NO, 
+								  DEAL_SEQ, SALE_NO, SALE_SEQ, BALJU_YN, CHULGO_YN, OLD_DANGA, DC_QTY, DC_DANGA)
+			SELECT #{app_date,jdbcType=VARCHAR}, #{app_no,jdbcType=VARCHAR}, INPUT_SEQ, ITEM_ID, QTY, DANGA, AMT, VAT, RATE, DC_AMT, BIGO, DEAL_NO, 
+					DEAL_SEQ, SALE_NO, SALE_SEQ, BALJU_YN, CHULGO_YN, OLD_DANGA, DC_QTY, DC_DANGA 
+			  FROM SALE_ON.SALE0204 
+			 WHERE YMD = #{req_date,jdbcType=VARCHAR} AND GUMAE_NO = #{gumae_no,jdbcType=VARCHAR} AND QTY > 0
+	</insert>
+	
+	<update id="updateAddOrderStock" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+		UPDATE SALE.SALE0305 M
+		   SET CHULGO_QTYST = NVL(CHULGO_QTYST,0) - (SELECT REQ_QTY FROM SALE_ON.SALE0204 WHERE YMD = #{req_date,jdbcType=VARCHAR} AND GUMAE_NO = #{gumae_no,jdbcType=VARCHAR} AND ITEM_ID = M.ITEM_ID) 
+		 WHERE YMD = #{jaego,jdbcType=VARCHAR}
+		   AND ITEM_ID IN (SELECT ITEM_ID FROM SALE_ON.SALE0204 WHERE YMD = #{req_date,jdbcType=VARCHAR} AND GUMAE_NO = #{gumae_no,jdbcType=VARCHAR})
+		   AND STORE_LOC = '01'
+	</update>
+	
+	<update id="updateCancelOrderStock" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+		UPDATE SALE.SALE0305 M
+		   SET CHULGO_QTYST = NVL(CHULGO_QTYST,0) + (SELECT REQ_QTY FROM SALE_ON.SALE0204 WHERE YMD = #{req_date,jdbcType=VARCHAR} AND GUMAE_NO = #{gumae_no,jdbcType=VARCHAR} AND ITEM_ID = M.ITEM_ID) 
+		 WHERE YMD = #{jaego,jdbcType=VARCHAR}
+		   AND ITEM_ID IN (SELECT ITEM_ID FROM SALE_ON.SALE0204 WHERE YMD = #{req_date,jdbcType=VARCHAR} AND GUMAE_NO = #{gumae_no,jdbcType=VARCHAR})
+		   AND STORE_LOC = '01'
+	</update>
+	
+	<insert id="insertTransferAddOrderMaster" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+		INSERT INTO SALE.SALE0203(GUMAE_NO, GUMAE_GB, YMD, SAWON_ID, CUST_ID, RSAWON_ID, RCUST_ID, GYULJAE_GB, TAX_TYPE, 
+								  DECIMAL_PROC, CHAMJO_NM, CHAMJO_RANK, AMT_SUM, VAT_SUM, BIGO, BALJU_YN, CHULGO_YN, NAPGI_YMD, 
+								  NAPGI_TYPE, CONVEY_TYPE, UPDATE_YN, GUBUN, ACCEPT_YN, INPUT_ID, INPUT_YMD, GUMAE_NOT, YMDT,SLIP_GB)
+			SELECT GUMAE_NOT, GUMAE_GB, YMDT, SAWON_ID, CUST_ID, RSAWON_ID, RCUST_ID, GYULJAE_GB, TAX_TYPE, 
+					 DECIMAL_PROC, CHAMJO_NM, CHAMJO_RANK, AMT_SUM, VAT_SUM, #{bigo}||' '||BIGO ADDBIGO, BALJU_YN, CHULGO_YN, NAPGI_YMD, 
+					 NAPGI_TYPE, CONVEY_TYPE, UPDATE_YN, GUBUN, ACCEPT_YN, INPUT_ID, INPUT_YMD, GUMAE_NOT, YMDT ,SLIP_GB
+			  FROM SALE_ON.SALE0203 
+			 WHERE YMD = #{req_date,jdbcType=VARCHAR} AND GUMAE_NO = #{gumae_no,jdbcType=VARCHAR}
+	</insert>
+	
+	<update id="updateOrderMasterReturn" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+		UPDATE SALE_ON.SALE0203
+		   SET YMDT = #{app_date,jdbcType=VARCHAR},
+			   RECEIPT_GB = '3',
+			   RETURN_DESC = #{return_desc,jdbcType=VARCHAR},
+			   ASAWON_ID = #{emp_code,jdbcType=VARCHAR},
+			   ADATE = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+		 WHERE GUMAE_NO = #{gumae_no,jdbcType=VARCHAR}
+	</update>
+	
+	<update id="cancelOrderMasterApproval" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+		UPDATE SALE_ON.SALE0203
+		   SET GUMAE_NOT = NULL,
+			   YMDT = NULL,
+			   ACCEPT_YN = 'Y',
+			   RECEIPT_GB = '1',
+			   ASAWON_ID = NULL,
+			   ADATE = NULL,
+			   RETURN_DESC = NULL
+		 WHERE GUMAE_NO = #{gumae_no,jdbcType=VARCHAR}
+	</update>
+	
+	<delete id="deleteTransferOrderDetail" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+		DELETE FROM SALE.SALE0204 WHERE YMD = TO_DATE(#{app_date,jdbcType=VARCHAR}) AND GUMAE_NO = #{app_no,jdbcType=VARCHAR}
+	</delete>
+	
+	<delete id="deleteTransferOrderMaster" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+		DELETE FROM SALE.SALE0203 WHERE YMD = TO_DATE(#{app_date,jdbcType=VARCHAR}) AND GUMAE_NO = #{app_no,jdbcType=VARCHAR}
+	</delete>
+	
+	<update id="updateOrderDetailQty" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+		UPDATE SALE_ON.sale0204
+		   SET qty = #{qty},
+		   	   amt = #{amt},
+		   	   vat = #{vat},
+		   	   dc_amt = #{dc_amt}
+		 WHERE ymd = #{ymd,jdbcType=VARCHAR}
+		   AND gumae_no = #{detail_gumae_no,jdbcType=VARCHAR}
+		   AND input_seq = #{input_seq,jdbcType=VARCHAR}
+	</update>
+	
+	<update id="cancelOrderDetailApproval" parameterType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+		UPDATE SALE_ON.SALE0204
+		   SET QTY = REQ_QTY,
+		   		dc_amt = (REQ_QTY * dc_danga),
+			<choose>
+				<when test="slip_gb !=null and slip_gb eq '1'.toString()"> <!-- 온라인주문 -->
+				amt = (REQ_QTY * danga),
+				vat = ROUND(((REQ_QTY * danga) * 0.1), 0)
+				</when>
+				<when test="slip_gb !=null and slip_gb eq '2'.toString()"> <!-- PDA주문 -->
+				amt = ROUND(((REQ_QTY * danga) / 1.1) + 0.4, 0),
+				vat = (REQ_QTY * danga) - ROUND(((REQ_QTY * danga) / 1.1) + 0.4, 0)
+				</when>
+			</choose>
+		 WHERE GUMAE_NO = #{gumae_no,jdbcType=VARCHAR}
+	</update>
+	
+	<select id="getItemYnList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.OrderApprovalVO">
+		SELECT ITEM_GB1
+		  FROM SALE.SALE0004 a, SALE_ON.SALE0204 b
+		 WHERE a.ITEM_ID = b.ITEM_ID
+		   AND b.GUMAE_NO = #{gumae_no}
+	</select>
+	
+</mapper>
+	

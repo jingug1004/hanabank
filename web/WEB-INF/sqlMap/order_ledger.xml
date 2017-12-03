@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : order_ledger.xml
+  * @메뉴명 : 온라인 주문 발주 > 원장조회  
+  * @최초작성일 : 2014/10/28            
+  * @author : 우정아                  
+  * @수정내역 :	
+ -->
+<mapper namespace="ledger"> 
+	
+	<select id="getLedgerGridList" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.LedgerVO">
+	
+	<if test="page != null">
+		SELECT *
+			FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+        		FROM (
+    </if>
+	<![CDATA[
+		SELECT TO_CHAR (A.YMD, 'YYYYMM') YM, TO_CHAR (A.YMD, 'YYYY-MM-DD') YMD,
+		       C.CUST_ID CUST_ID, A.RCUST_ID RCUST_ID, C.VOU_NO VOU_NO,
+		       C.CUST_NM || '(' || C.CUST_ID || ')' CUST_NM,
+		       RTRIM (C.ADDR1) || ' ' || RTRIM (C.ADDR2) ADDR, C.PRESIDENT PRESIDENT,
+		       E.SAWON_ID SAWON_ID, E.SAWON_NM SAWON_NM, D.CUST_NM RCUST_NM,
+		       A.ITEM_ID ITEM_ID,
+		       DECODE (A.YMD,
+		               NULL, '****  거래내역 없음  ****',
+		               A.ITEM_ID || ' ' || A.ITEM_NM
+		              ) ITEM_NM,
+		       A.STANDARD STANDARD, A.QTY QTY, A.DANGA DANGA, NVL (A.AMT, 0) AMT,
+		       NVL (A.VAT, 0) VAT, NVL (A.SUKUM, 0) SUKUM,
+		       NVL (A.AMT, 0) + NVL (A.VAT, 0) TOT, NVL (B.BEFORE_AMT, 0) BEFORE_AMT,
+		       A.DEAL_NO DEAL_NO, A.DC_AMT DC_AMT, A.DC_QTY DC_QTY,
+		       DECODE (A.DC_EN_YN, 'Y', A.DC_AMT) DC_EN_AMT, A.DC_EN_YN DC_EN_YN,
+		       C.TEL TEL,
+		         SUM (NVL (A.AMT, 0) + NVL (A.VAT, 0) - NVL (A.SUKUM, 0)) OVER (PARTITION BY C.CUST_ID ORDER BY C.CUST_ID,
+		          A.YMD, A.RCUST_ID ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+		       + NVL (B.BEFORE_AMT, 0) AS REM_AMT,
+		       A.BIGO BIGO
+		  FROM (SELECT 1 SEQ, A.YMD YMD, A.CUST_ID CUST_ID, A.RCUST_ID RCUST_ID,
+		               B.ITEM_ID ITEM_ID, D.ITEM_NM ITEM_NM, D.STANDARD STANDARD,
+		               B.QTY QTY, B.DANGA DANGA, B.AMT AMT, B.VAT VAT,
+		               B.DC_AMT DC_AMT, B.DC_QTY DC_QTY, B.DC_EN_YN DC_EN_YN, 0 SUKUM,
+		               (NVL (B.AMT, 0) + NVL (B.VAT, 0)) TOT, A.DEAL_NO DEAL_NO,
+		               DECODE (E.GUMAE_GB, '12', E.BIGO, '13', E.BIGO, '') BIGO
+		          FROM SALE.SALE0207 A,
+		               SALE.SALE0208 B,
+		               SALE.SALE0004 D,
+		               SALE.SALE0203 E
+		         WHERE A.DEAL_NO = B.DEAL_NO
+		           AND A.YMD = B.YMD
+		           AND B.ITEM_ID = D.ITEM_ID
+		           AND A.YMD BETWEEN #{adt_from} AND #{adt_to}
+		           AND A.CUST_ID = #{cust_id}
+		           AND A.GUMAE_NO = E.GUMAE_NO(+)
+		        UNION ALL                                       /*  수금(할인) 내역 */
+		        SELECT 2 SEQ, A.YMD YMD, A.CUST_ID CUST_ID, A.RCUST_ID RCUST_ID,
+		               DECODE (A.JUNPYO_GB,
+		                       '01', '현금',
+		                       '10', '매출할인',
+		                       '20', '부실채권',
+		                       '30', '거래이관',
+		                       '35', '대손상각',
+		                       '40', '잡수익',
+		                       '45', '손실정리',
+		                       '50', '부도어음대체',
+		                       '55', '폐업상품입고',
+		                       '기타수금'
+		                      ) ITEM_ID,
+		               BIGO ITEM_NM, '' STANDARD, 0 QTY, 0 DANGA, 0 AMT, 0 VAT,
+		               0 DC_AMT, 0 DC_QTY, '' DC_EN_YN, CASH_AMT SUKUM,
+		               NVL (- (CASH_AMT), 0) TOT, '' DEAL_NO, '' BIGO
+		          FROM SALE.SALE0401 A
+		         WHERE A.YMD BETWEEN #{adt_from} AND #{adt_to}
+		           AND A.CUST_ID = #{cust_id}
+		           AND A.CASH_AMT <> 0
+		        UNION ALL
+		        SELECT 2 SEQ, A.YMD YMD, A.CUST_ID CUST_ID, A.RCUST_ID RCUST_ID,
+		               C.CODE1_NM ITEM_ID, B.BILL_NO ITEM_NM, '' STANDARD, 0 QTY,
+		               0 DANGA, 0 AMT, 0 VAT, 0 DC_AMT, 0 DC_QTY, '' DC_EN_YN,
+		               AMT SUKUM, NVL (- (AMT), 0) TOT, '' DEAL_NO,
+		               DECODE (C.CODE1, '100', '', B.END_YMD) BIGO
+		          FROM SALE.SALE0402 B,
+		               SALE.SALE0401 A,
+		               (SELECT CODE1, CODE1_NM
+		                  FROM SALE.SALE0001
+		                 WHERE CODE_GB = '0007') C
+		         WHERE A.YMD BETWEEN #{adt_from} AND #{adt_to}
+		           AND A.JUNPYO_NO = B.JUNPYO_NO
+		           AND A.CUST_ID = #{cust_id}
+		           AND B.BILL_GB = C.CODE1(+)) A,
+		       (SELECT   CUST_ID CUST_ID, NVL (SUM (BEFORE_AMT), 0) BEFORE_AMT
+		            FROM (SELECT CUST_ID,                               /*전월 잔액 */
+		                                 BEFORE_AMT BEFORE_AMT
+		                    FROM SALE.SALE0306
+		                   WHERE CUST_ID = #{cust_id}
+		                     AND YMD = TO_DATE (#{adt_from_first}, 'YYYY/MM/DD')
+		                  UNION ALL
+		                  SELECT CUST_ID,          /*금월의 조회조건 기간까지의 잔액*/
+		                                 NVL (A.AMT, 0) + NVL (A.VAT, 0) BEFORE_AMT
+		                    FROM SALE.SALE0207 B, SALE.SALE0208 A
+		                   WHERE A.DEAL_NO = B.DEAL_NO
+		                     AND A.YMD = B.YMD
+		                     AND B.CUST_ID = #{cust_id}
+		                     AND A.YMD >= TO_DATE (#{adt_from_first}, 'YYYY/MM/DD')
+		                     AND A.YMD < #{adt_from}
+		                  UNION ALL
+		                  SELECT CUST_ID,
+		                           (NVL (A.BILL_AMT, 0) + NVL (A.CASH_AMT, 0)
+		                           )
+		                         * -1 BEFORE_AMT
+		                    FROM SALE.SALE0401 A
+		                   WHERE A.CUST_ID = #{cust_id}
+		                     AND A.YMD >= TO_DATE (#{adt_from_first}, 'YYYY/MM/DD')
+		                     AND A.YMD < #{adt_from})
+		        GROUP BY CUST_ID) B,
+		       SALE.SALE0003 C,
+		       SALE.SALE0003 D,
+		       (SELECT B.SAWON_ID, B.SAWON_NM, B.DEPT_CD, C.DEPT_NM
+		          FROM SALE.SALE0007 B, SALE.SALE0008 C
+		         WHERE B.DEPT_CD = C.DEPT_CD) E
+		 WHERE C.CUST_ID = #{cust_id}
+		   AND C.CUST_ID = A.CUST_ID(+)
+		   AND C.CUST_ID = B.CUST_ID(+)
+		   AND A.RCUST_ID = D.CUST_ID(+)
+		   AND C.SAWON_ID = E.SAWON_ID(+)
+		   AND (NVL (A.TOT, 0) <> 0 OR NVL (B.BEFORE_AMT, 0) <> 0)
+	]]>
+		 
+		<if test="sidx != ''">
+			ORDER BY ${sidx} ${sord}
+		</if>
+		
+		<if test="page != null">
+			) T0
+		)
+		WHERE PAGE = #{page,jdbcType=INTEGER}
+		</if>
+	  
+	 
+	</select>
+	
+	
+	<select id="getSumLedger" parameterType="hashmap" resultType="com.hanaph.saleon.order.vo.LedgerVO">
+	
+	<![CDATA[
+	  SELECT SUM (NVL (AMT, 0)) AMT, SUM (NVL (VAT, 0)) VAT,
+	  		 SUM (NVL (AMT, 0) + NVL (VAT, 0))TOT, SUM (NVL (SUKUM, 0)) SUKUM, COUNT(*) totalCnt
+	       
+	 	FROM (SELECT 1 SEQ, A.YMD YMD, A.CUST_ID CUST_ID, A.RCUST_ID RCUST_ID,
+		               B.ITEM_ID ITEM_ID, D.ITEM_NM ITEM_NM, D.STANDARD STANDARD,
+		               B.QTY QTY, B.DANGA DANGA, B.AMT AMT, B.VAT VAT,
+		               B.DC_AMT DC_AMT, B.DC_QTY DC_QTY, B.DC_EN_YN DC_EN_YN, 0 SUKUM,
+		               (NVL (B.AMT, 0) + NVL (B.VAT, 0)) TOT, A.DEAL_NO DEAL_NO,
+		               DECODE (E.GUMAE_GB, '12', E.BIGO, '13', E.BIGO, '') BIGO
+		          FROM SALE.SALE0207 A,
+		               SALE.SALE0208 B,
+		               SALE.SALE0004 D,
+		               SALE.SALE0203 E
+		         WHERE A.DEAL_NO = B.DEAL_NO
+		           AND A.YMD = B.YMD
+		           AND B.ITEM_ID = D.ITEM_ID
+		           AND A.YMD BETWEEN #{adt_from} AND #{adt_to}
+		           AND A.CUST_ID = #{cust_id}
+		           AND A.GUMAE_NO = E.GUMAE_NO(+)
+		        UNION ALL                                       /*  수금(할인) 내역 */
+		        SELECT 2 SEQ, A.YMD YMD, A.CUST_ID CUST_ID, A.RCUST_ID RCUST_ID,
+		               DECODE (A.JUNPYO_GB,
+		                       '01', '현금',
+		                       '10', '매출할인',
+		                       '20', '부실채권',
+		                       '30', '거래이관',
+		                       '35', '대손상각',
+		                       '40', '잡수익',
+		                       '45', '손실정리',
+		                       '50', '부도어음대체',
+		                       '55', '폐업상품입고',
+		                       '기타수금'
+		                      ) ITEM_ID,
+		               BIGO ITEM_NM, '' STANDARD, 0 QTY, 0 DANGA, 0 AMT, 0 VAT,
+		               0 DC_AMT, 0 DC_QTY, '' DC_EN_YN, CASH_AMT SUKUM,
+		               NVL (- (CASH_AMT), 0) TOT, '' DEAL_NO, '' BIGO
+		          FROM SALE.SALE0401 A
+		         WHERE A.YMD BETWEEN #{adt_from} AND #{adt_to}
+		           AND A.CUST_ID = #{cust_id}
+		           AND A.CASH_AMT <> 0
+		        UNION ALL
+		        SELECT 2 SEQ, A.YMD YMD, A.CUST_ID CUST_ID, A.RCUST_ID RCUST_ID,
+		               C.CODE1_NM ITEM_ID, B.BILL_NO ITEM_NM, '' STANDARD, 0 QTY,
+		               0 DANGA, 0 AMT, 0 VAT, 0 DC_AMT, 0 DC_QTY, '' DC_EN_YN,
+		               AMT SUKUM, NVL (- (AMT), 0) TOT, '' DEAL_NO,
+		               DECODE (C.CODE1, '100', '', B.END_YMD) BIGO
+		          FROM SALE.SALE0402 B,
+		               SALE.SALE0401 A,
+		               (SELECT CODE1, CODE1_NM
+		                  FROM SALE.SALE0001
+		                 WHERE CODE_GB = '0007') C
+		         WHERE A.YMD BETWEEN #{adt_from} AND #{adt_to}
+		           AND A.JUNPYO_NO = B.JUNPYO_NO
+		           AND A.CUST_ID = #{cust_id}
+		           AND B.BILL_GB = C.CODE1(+)) A,
+		       (SELECT   CUST_ID CUST_ID, NVL (SUM (BEFORE_AMT), 0) BEFORE_AMT
+		            FROM (SELECT CUST_ID,                               /*전월 잔액 */
+		                                 BEFORE_AMT BEFORE_AMT
+		                    FROM SALE.SALE0306
+		                   WHERE CUST_ID = #{cust_id}
+		                     AND YMD = TO_DATE (#{adt_from_first}, 'YYYY/MM/DD')
+		                  UNION ALL
+		                  SELECT CUST_ID,          /*금월의 조회조건 기간까지의 잔액*/
+		                                 NVL (A.AMT, 0) + NVL (A.VAT, 0) BEFORE_AMT
+		                    FROM SALE.SALE0207 B, SALE.SALE0208 A
+		                   WHERE A.DEAL_NO = B.DEAL_NO
+		                     AND A.YMD = B.YMD
+		                     AND B.CUST_ID = #{cust_id}
+		                     AND A.YMD >= TO_DATE (#{adt_from_first}, 'YYYY/MM/DD')
+		                     AND A.YMD < #{adt_from}
+		                  UNION ALL
+		                  SELECT CUST_ID,
+		                           (NVL (A.BILL_AMT, 0) + NVL (A.CASH_AMT, 0)
+		                           )
+		                         * -1 BEFORE_AMT
+		                    FROM SALE.SALE0401 A
+		                   WHERE A.CUST_ID = #{cust_id}
+		                     AND A.YMD >= TO_DATE (#{adt_from_first}, 'YYYY/MM/DD')
+		                     AND A.YMD < #{adt_from})
+		        GROUP BY CUST_ID) B,
+		       SALE.SALE0003 C,
+		       SALE.SALE0003 D,
+		       (SELECT B.SAWON_ID, B.SAWON_NM, B.DEPT_CD, C.DEPT_NM
+		          FROM SALE.SALE0007 B, SALE.SALE0008 C
+		         WHERE B.DEPT_CD = C.DEPT_CD) E
+		 WHERE C.CUST_ID = #{cust_id}
+		   AND C.CUST_ID = A.CUST_ID(+)
+		   AND C.CUST_ID = B.CUST_ID(+)
+		   AND A.RCUST_ID = D.CUST_ID(+)
+		   AND C.SAWON_ID = E.SAWON_ID(+)
+		   AND (NVL (A.TOT, 0) <> 0 OR NVL (B.BEFORE_AMT, 0) <> 0)
+	]]>
+	</select>
+	
+</mapper>
+	

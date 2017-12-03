@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : business_return.xml
+  * @메뉴명 : 반품현황
+  * @최초작성일 : 2014/10/30
+  * @author : 윤범진          
+  * @수정내역 :
+ -->
+<mapper namespace="return"> 
+	
+	<select id="getReturnGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.ReturnVO">
+	
+		<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+    	</if>
+		<![CDATA[
+						  SELECT a.ym, a.ymd, a.deal_gb, a.cust_gb1, a.cust_id, a.cust_nm, a.vou_no,
+						         a.rcust_id, a.rcust_nm, a.sawon_id, a.sawon_nm, a.dept_cd,
+						         a.sawon_idh, b.sawon_nm sawon_nmh, b.dept_cd dept_cdh, a.item_id,
+						         a.item_nm, a.STANDARD, a.qty, a.dc_qty, a.dc_amt, a.dc_en_yn,
+						         a.danga, a.amt, a.vat, a.rcust_gb1, a.rcust_gb1h, a.tot
+						    FROM (SELECT TO_CHAR (a.ymd, 'YYYYMM') ym, TO_CHAR (a.ymd, 'YYYY-MM-DD') ymd,
+						                 a.deal_gb deal_gb, e.cust_gb1 cust_gb1, a.cust_id cust_id,
+						                 e.cust_nm cust_nm, e.vou_no vou_no, a.rcust_id rcust_id,
+						                 f.cust_nm rcust_nm, a.rsawon_id sawon_id,
+						                 c.sawon_nm sawon_nm, c.dept_cd dept_cd,
+						                 sale.f_get_sale0405_sawonidh (a.deal_no,
+						                                               a.cust_id,
+						                                               a.rcust_id,
+						                                               b.item_id,
+						                                               a.ymd
+						                                              ) sawon_idh,
+						                 b.item_id item_id, d.item_nm item_nm, d.STANDARD STANDARD,
+						                 b.qty qty, b.dc_qty dc_qty, b.dc_amt dc_amt,
+						                 b.dc_en_yn dc_en_yn, b.danga danga, b.amt amt, b.vat vat,
+						                 f.cust_gb1 rcust_gb1,
+						                 sale.f_get_sale0003h_custgb1 (a.rcust_id, a.ymd) rcust_gb1h,
+						                 (NVL (b.amt, 0) + NVL (b.vat, 0)) tot
+						            FROM sale.sale0207 a,
+						                 sale.sale0208 b,
+						                 (SELECT b.sawon_id, b.sawon_nm, b.dept_cd, c.dept_nm
+						                    FROM sale.sale0007 b, sale.sale0008 c
+						                   WHERE b.dept_cd = c.dept_cd) c,
+						                 sale.sale0004 d,
+						                 sale.sale0003 e,
+						                 sale.sale0003 f
+						           WHERE a.deal_no = b.deal_no
+						             AND a.ymd = b.ymd
+						             AND b.item_id = d.item_id
+						             AND a.rsawon_id = c.sawon_id
+						             AND a.cust_id = e.cust_id
+						             AND a.rcust_id = f.cust_id
+						             AND a.deal_gb LIKE '1%'
+						             AND b.ymd BETWEEN #{ad_fr_date,jdbcType=DATE} AND #{ad_to_date,jdbcType=DATE}
+						             ]]>
+								<if test="as_fr_cust != ''">
+								     AND a.cust_id = #{as_fr_cust,jdbcType=VARCHAR}
+								</if>
+								<![CDATA[
+						        ) a,
+                         (  select sawon_id,sawon_nm,dept_cd
+                              from sale0007 
+	                         where dept_cd IN  ( select sale_dept_cd 
+	                                               from hr_co_depart_0 
+	                                            connect by prior dept_cd = up_dept_cd
+	                                              start with dept_cd = (    select dept_cd 
+	                                                                          from hr_co_depart_0 
+	                                                                         where level = 2
+	                                                                       connect by  dept_cd = prior up_dept_cd
+	                                                                         start with dept_cd = (select dept_cd from hr_hc_empbas_0 where emp_no in (select insa_sawon_id from sale0007 where sawon_id = #{as_emp_cd}) )                                                                         
+	                                                                    )
+	                                            )
+                               and gubun = 'Y'   
+                               and #{as_assgnCode} in ('27000','27010','27020','27025')
+                             union all
+                             select sawon_id , sawon_nm, dept_cd
+                               from sale0007
+                              where dept_cd = #{as_dept_cd}
+                                and #{as_assgnCode} in ('27027','27030','27035')
+                             union all
+                             select sawon_id , sawon_nm, dept_cd
+                               from sale0007
+                              where sawon_id = #{as_emp_cd}
+                                and #{as_assgnCode} in ('27040','27050')
+                          ) b
+						 WHERE a.sawon_idh = b.sawon_id
+		]]>
+		 
+					<if test="sidx != ''">
+						ORDER BY ${sidx} ${sord}
+					</if>
+		
+				<if test="page != null">
+					) T0
+				)
+				WHERE PAGE = #{page,jdbcType=INTEGER}
+				</if>
+	</select>
+	
+	<select id="getReturnGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.ReturnVO">
+		SELECT COUNT(*) total_cnt, SUM(NVL(a.amt, 0)) total_amt,
+			   SUM(NVL(a.vat, 0)) total_vat, SUM(NVL(a.tot, 0)) total_tot
+		  FROM (SELECT TO_CHAR (a.ymd, 'YYYYMM') ym, TO_CHAR (a.ymd, 'YYYY-MM-DD') ymd,
+	                 a.deal_gb deal_gb, e.cust_gb1 cust_gb1, a.cust_id cust_id,
+	                 e.cust_nm cust_nm, e.vou_no vou_no, a.rcust_id rcust_id,
+	                 f.cust_nm rcust_nm, a.rsawon_id sawon_id,
+	                 c.sawon_nm sawon_nm, c.dept_cd dept_cd,
+	                 sale.f_get_sale0405_sawonidh (a.deal_no,
+	                                               a.cust_id,
+	                                               a.rcust_id,
+	                                               b.item_id,
+	                                               a.ymd
+	                                              ) sawon_idh,
+	                 b.item_id item_id, d.item_nm item_nm, d.STANDARD STANDARD,
+	                 b.qty qty, b.dc_qty dc_qty, b.dc_amt dc_amt,
+	                 b.dc_en_yn dc_en_yn, b.danga danga, b.amt amt, b.vat vat,
+	                 f.cust_gb1 rcust_gb1,
+	                 sale.f_get_sale0003h_custgb1 (a.rcust_id, a.ymd) rcust_gb1h,
+	                 (NVL (b.amt, 0) + NVL (b.vat, 0)) tot
+	            FROM sale.sale0207 a,
+	                 sale.sale0208 b,
+	                 (SELECT b.sawon_id, b.sawon_nm, b.dept_cd, c.dept_nm
+	                    FROM sale.sale0007 b, sale.sale0008 c
+	                   WHERE b.dept_cd = c.dept_cd) c,
+	                 sale.sale0004 d,
+	                 sale.sale0003 e,
+	                 sale.sale0003 f
+	           WHERE a.deal_no = b.deal_no
+	             AND a.ymd = b.ymd
+	             AND b.item_id = d.item_id
+	             AND a.rsawon_id = c.sawon_id
+	             AND a.cust_id = e.cust_id
+	             AND a.rcust_id = f.cust_id
+	             AND a.deal_gb LIKE '1%'
+	             AND b.ymd BETWEEN #{ad_fr_date,jdbcType=DATE} AND #{ad_to_date,jdbcType=DATE}
+			<if test="as_fr_cust != ''">
+			     AND a.cust_id = #{as_fr_cust,jdbcType=VARCHAR}
+			</if>
+			<![CDATA[
+		        ) a,
+               (  select sawon_id,sawon_nm,dept_cd
+                    from sale0007 
+                where dept_cd IN  ( select sale_dept_cd 
+                                      from hr_co_depart_0 
+                                   connect by prior dept_cd = up_dept_cd
+                                     start with dept_cd = (    select dept_cd 
+                                                                 from hr_co_depart_0 
+                                                                where level = 2
+                                                              connect by  dept_cd = prior up_dept_cd
+                                                                start with dept_cd = (select dept_cd from hr_hc_empbas_0 where emp_no in (select insa_sawon_id from sale0007 where sawon_id = #{as_emp_cd}) )                                                                         
+                                                           )
+                                   )
+                     and gubun = 'Y'   
+                     and #{as_assgnCode} in ('27000','27010','27020','27025')
+                   union all
+                   select sawon_id , sawon_nm, dept_cd
+                     from sale0007
+                    where dept_cd = #{as_dept_cd}
+                      and #{as_assgnCode} in ('27027','27030','27035')
+                   union all
+                   select sawon_id , sawon_nm, dept_cd
+                     from sale0007
+                    where sawon_id = #{as_emp_cd}
+                      and #{as_assgnCode} in ('27040','27050')
+                ) b
+         WHERE a.sawon_idh = b.sawon_id
+		]]>
+	</select>
+	
+</mapper>
+	

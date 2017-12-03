@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : main.xml      
+  * @메뉴명 : 온라인 주문 main      
+  * @최초작성일 : 2015/01/16            
+  * @author : 김재갑                  
+  * @수정내역 :	
+ -->
+<mapper namespace="main"> 
+	
+	<select id="getNoticeList" parameterType="hashmap" resultType="com.hanaph.saleon.main.vo.NoticeVO">
+		<if test="rownum != null">
+			SELECT *
+			FROM (
+		</if>
+		<choose>
+			<when test="totalCountYn != null">
+				SELECT COUNT(NOTICE_ID) TOTAL_CNT
+	        		FROM (
+			</when>
+			<when test="page != null">
+				SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+			</when>
+		</choose>
+			SELECT 
+				   A.NOTICE_ID, 
+			       A.GROUPCD, 
+			       A.NOTICE_TITLE, 
+			       A.NOTICE_DESC, 
+			       TO_CHAR(A.INPUT_DATE, 'YYYY-MM-DD AM HH12:MI:SS') INPUT_DATE, 
+			       A.INPUT_USERID,
+			       B.SAWON_NM
+			  FROM SALE.PDA_NOTICE A, SALE.SALE0007 B
+			 WHERE A.INPUT_USERID = B.SAWON_ID(+)
+			 <if test="searchType != null and searchType == 'title'">
+			   AND A.NOTICE_TITLE LIKE '%'||#{keyword,jdbcType=VARCHAR}||'%'
+			 </if>
+			 <if test="searchType != null and searchType == 'desc'">
+			   AND A.NOTICE_DESC LIKE '%'||#{keyword,jdbcType=VARCHAR}||'%'
+			 </if>
+			 <if test="searchType != null and searchType == 'titleDesc'">
+			   AND A.NOTICE_TITLE LIKE '%'||#{keyword,jdbcType=VARCHAR}||'%'
+			   AND A.NOTICE_DESC LIKE '%'||#{keyword,jdbcType=VARCHAR}||'%'
+			 </if>
+			 <if test="searchType != null and searchType == 'sawonNm'">
+			   AND B.SAWON_NM LIKE '%'||#{keyword,jdbcType=VARCHAR}||'%'
+			 </if>
+			 <if test="searchType != null and sttDate != null and endDate != null">
+			   AND A.INPUT_DATE BETWEEN TO_DATE(#{sttDate}, 'YYYYMMDD') AND TO_DATE(#{endDate}, 'YYYYMMDD') + 0.99999
+			 </if>
+			 <if test="notice_id != null and notice_id != ''">
+			   AND A.NOTICE_ID = #{notice_id}
+			 </if>
+			 <choose>
+			 	<when test="sidx != null and sidx != ''">
+			 		ORDER BY ${sidx} ${sord}
+			 	</when>
+			 	<otherwise>
+			 		ORDER BY A.NOTICE_ID DESC
+			 	</otherwise>
+			 </choose>
+		<choose>
+			<when test="totalCountYn != null">
+				)
+			</when>
+			<when test="page != null">
+					) T0
+				)
+				WHERE PAGE = #{page,jdbcType=INTEGER}
+			</when>
+		</choose>
+		<if test="rownum != null">
+		   ) Z
+		   WHERE ROWNUM BETWEEN 1 AND #{rownum}
+		 </if>
+	</select>
+	
+	
+	<select id="getCustInfo" parameterType="hashmap" resultType="com.hanaph.saleon.main.vo.CustDashboardVO">
+		SELECT 
+			CUST_ID, CUST_NM,VOU_NO,ADDR1||' '||ADDR2 ADDR, PRESIDENT, EMAIL 
+		FROM SALE.SALE0003 
+		WHERE CUST_ID = #{custId}
+	</select>
+	
+	<select id="getCustLoanPresentCondition" parameterType="hashmap" resultType="com.hanaph.saleon.main.vo.CustDashboardVO">
+		SELECT
+		    BEFORE_AMT
+		    , SALE_AMT
+		    , CASH_AMT
+		    , CUR_AMT
+		    , BILL_AMT
+		    , JASU_AMT
+		    , TASU_AMT
+		    , CUR_AMT + JASU_AMT AS TOTAL_AMT
+		    , DAMBO
+		    , (CASE WHEN BILL_CNT > 1 THEN BILL_KIND || ' 外 ' || (BILL_CNT - 1) || ' 건'
+		            ELSE BILL_KIND
+		            END)  DAMBO_KIND
+		    , SALE_DAMBO_AMT
+		    , (ROUND( NVL((SALE_DAMBO_AMT  / NULLIF(( CUR_AMT  +  JASU_AMT ), 0)), 0) * 100,2)) ||' %' AS DAMBO_PER 
+		    , SAWON_NM
+		    , RATE_DAY
+		    , LOAN_LIMIT
+		FROM(
+		  SELECT NVL(F.BEFORE_AMT,0)          BEFORE_AMT,
+		        NVL(F.MISU_AMT,0)            SALE_AMT,
+		        NVL(F.BEFORE_AMT,0) + NVL(F.MISU_AMT,0) - NVL(F.SU_AMT,0)  CUR_AMT,
+		        NVL(F.SU_AMT,0)              SU_AMT,
+		        NVL(I.CASH_AMT,0)             CASH_AMT,
+		        NVL(L.BILL_010_AMT,0) + NVL(L.BILL_020_AMT,0) + NVL(L.BILL_025_AMT,0) + NVL(L.BILL_030_AMT,0) + NVL(L.BILL_035_AMT,0) + NVL(L.BILL_040_AMT,0) + NVL(L.BILL_100_AMT,0) + NVL(L.BILL_900_AMT,0)   BILL_AMT,
+		        NVL(L.BILL_010_AMT,0) + NVL(L.BILL_020_AMT,0) + NVL(L.BILL_030_AMT,0) + NVL(L.BILL_100_AMT,0) + NVL(L.BILL_900_AMT,0)               JASU_AMT,
+		        NVL(L.BILL_025_AMT,0) + NVL(L.BILL_035_AMT,0) + NVL(L.BILL_040_AMT,0)                                                               TASU_AMT,
+		        NVL(H.SALE_DAMBO_AMT,0)      SALE_DAMBO_AMT,
+		        CASE A.YEONDAE_2 WHEN 'Y' THEN (SELECT TO_NUMBER(BIGO) FROM SALE.SALE0001 WHERE CODE_GB = '4001'  AND CODE1 = '04') ELSE 0 END      DAMBO,
+		        H.BILL_CNT                   BILL_CNT,
+		        H.BILL_KIND                  BILL_KIND,
+		        SALE.F_GET_NAME('SALE0007',A.SAWON_ID,'')  SAWON_NM,
+		        SALE.F_RATE_DAY_BEFOREMONTH(to_char(add_months(sysdate,-1),'yyyymm'),A.CUST_ID) AS rate_day,
+		        A.CREDIT_LIMIT_AMT LOAN_LIMIT
+		   FROM SALE.SALE0003 A,
+		        ( SELECT CUST_ID , 
+		                 SUM(BEFORE_AMT)  BEFORE_AMT,
+		                 SUM(MISU_AMT)    MISU_AMT,
+		                 SUM(SU_AMT)      SU_AMT
+		            FROM SALE.SALE0306
+		           WHERE YMD        = TO_DATE(SUBSTR(#{ymd},0,6)||'01','YYYYMMDD')
+		             AND CUST_ID    = #{custId}
+		           GROUP BY CUST_ID
+		        ) F,
+		        ( SELECT X.CUST_ID, NVL(SUM(X.SALE_DAMBO_AMT),0) SALE_DAMBO_AMT, COUNT(BILL_GB) BILL_CNT,
+		                 (SELECT (SELECT CODE1_NM FROM SALE.SALE0001 WHERE CODE_GB = '0022' AND CODE1 = X.BILL_GB ) BILL_GB
+		                    FROM SALE.SALE0404 X
+		                   WHERE X.CUST_ID    = #{custId}
+		                     AND NVL(X.CHULGO_YMD,TO_DATE('2999/01/01','YYYY/MM/DD')) = TO_DATE('2999/01/01','YYYY/MM/DD')
+		                     AND X.DAM_BOYU_STAT = 'Y'
+		                     AND ROWNUM = 1)  BILL_KIND
+		            FROM SALE.SALE0404 X
+		           WHERE X.CUST_ID    = #{custId}
+		             AND NVL(X.CHULGO_YMD,TO_DATE('2999/01/01','YYYY/MM/DD')) = TO_DATE('2999/01/01','YYYY/MM/DD')
+		             AND X.DAM_BOYU_STAT = 'Y'
+		           GROUP BY X.CUST_ID 
+		        ) H,
+		        ( SELECT X.CUST_ID , NVL(SUM(CASH_AMT),0) + NVL(SUM(BILL_AMT),0) CASH_AMT
+		            FROM SALE.SALE0401 X
+		           WHERE X.CUST_ID = #{custId}
+		             AND X.YMD BETWEEN TO_DATE(SUBSTR(#{ymd},0,6)||'01','YYYYMMDD')
+		                           AND LAST_DAY(TO_DATE(#{ymd},'YYYYMMDD'))
+		           GROUP BY X.CUST_ID 
+		        ) I,
+		        (
+		             SELECT X.CUST_ID        CUST_ID ,
+		                   NVL(SUM(DECODE(Y.BILL_GB,'010',Y.AMT)),0)  BILL_010_AMT,
+		                 NVL(SUM(DECODE(Y.BILL_GB,'020',Y.AMT)),0)  BILL_020_AMT,
+		                 NVL(SUM(DECODE(Y.BILL_GB,'025',Y.AMT)),0)  BILL_025_AMT,
+		                 NVL(SUM(DECODE(Y.BILL_GB,'030',Y.AMT)),0)  BILL_030_AMT,
+		                 NVL(SUM(DECODE(Y.BILL_GB,'035',Y.AMT)),0)  BILL_035_AMT,
+		                 NVL(SUM(DECODE(Y.BILL_GB,'040',Y.AMT)),0)  BILL_040_AMT,
+		                 NVL(SUM(DECODE(Y.BILL_GB,'100',Y.AMT)),0)  BILL_100_AMT,
+		                 NVL(SUM(DECODE(Y.BILL_GB,'900',Y.AMT)),0)  BILL_900_AMT
+		            FROM SALE.SALE0401 X ,
+		                    SALE.SALE0402 Y
+		           WHERE X.YMD       = Y.YMD
+		             AND X.JUNPYO_NO = Y.JUNPYO_NO 
+		             AND Y.END_YMD  >= SYSDATE
+		           GROUP BY X.CUST_ID
+		          ) L
+		  WHERE A.CUST_ID    = #{custId}
+		    AND A.CUST_ID    = F.CUST_ID(+)
+		    AND A.CUST_ID    = H.CUST_ID(+)
+		    AND A.CUST_ID    = I.CUST_ID(+)
+		    AND A.CUST_ID    = L.CUST_ID(+)
+		)
+	</select>
+	
+	<select id="getCustOrderPresentCondition" parameterType="hashmap" resultType="com.hanaph.saleon.main.vo.CustDashboardVO">
+		SELECT   MAX(YMD) YMD, TO_CHAR(YMD,'mm') MONTH                                                       
+	         ,SUM(AMT_SUM + VAT_SUM) AS MONTH_AMT
+	     FROM SALE.SALE0207 A                                                            
+	    WHERE YMD BETWEEN #{ymdFr} AND #{ymdTo}                               
+	      AND CUST_ID = #{custId}                                            
+	    GROUP BY TO_CHAR(YMD,'mm')
+	    ORDER BY 1
+	</select>
+	
+	<select id="getCustOrderTotal" parameterType="hashmap" resultType="com.hanaph.saleon.main.vo.CustDashboardVO">
+		SELECT  MAX(YMD) YMD, '99' MONTH, SUM(AMT_SUM + VAT_SUM) AS TOTAL_AMT
+     	FROM SALE.SALE0207 A                                                            
+    	WHERE YMD BETWEEN #{ymdFr} AND #{ymdTo}                                     
+      	AND CUST_ID = #{custId} 
+	</select>
+	
+	<select id="getEmpInfo" parameterType="hashmap" resultType="com.hanaph.saleon.main.vo.EmpDashboardVO">
+		SELECT A.SAWON_NM, A.SIL_SAWON_ID EMP_ID, A.PART_GB PART_GB, CODE1_NM PART_NM, A.DEPT_CD, C.DEPT_NM 
+		FROM SALE.SALE0007 A, SALE.SALE0001 B, SALE.SALE0008 C
+		WHERE A.SAWON_ID = #{empId} AND A.GUBUN = 'Y'
+		AND B.CODE_GB = '0013' AND B.CODE1 = A.PART_GB
+		AND C.DEPT_CD = A.DEPT_CD
+	</select>
+	
+	<select id="getEmpResultYear" parameterType="hashmap" resultType="com.hanaph.saleon.main.vo.EmpDashboardVO">
+		SELECT 	
+				SUBSTR(DATE_TIME,5,2) AS MONTH,
+	          SUM(SALE_AMT) AS SALE_GOAL_AMT,  
+	          ROUND((SUM(SALE_AMT_SILJUK) + SUM(SALE_AMT_HALINS02) )  * ( NVL(#{AS_SILJUKYUL_IN},100) * 0.01 ) ,0)  AS SALE_RESULT_AMT,  
+	          AVG(SALE_PERCENT) AS SALE_PERCENT,
+	          SUM(IN_AMT) AS IN_SALE_GOAL_AMT,  
+	          ROUND(SUM(IN_AMT_SILJUK) * ( NVL(#{AS_SILJUKYUL_IN_SU},100) * 0.01), 0) AS IN_SALE_RESULT_AMT,
+	          SUM(IN_PERCENT) AS IN_PERCENT   
+	     FROM SALE.SALEPART_BATCH2
+	    WHERE SUBSTR(DATE_TIME,1,4) = #{year} 
+	      AND EMP_NO = #{empId}
+	    GROUP BY SUBSTR(DATE_TIME,5,2)
+	    ORDER BY MONTH
+	</select>
+	
+	<select id="getPartResultYear" parameterType="hashmap" resultType="com.hanaph.saleon.main.vo.EmpDashboardVO">
+		SELECT 
+			  SUBSTR(DATE_TIME,5,2)  AS MONTH,
+	          SUM(SALE_AMT) AS SALE_GOAL_AMT,  
+	          ROUND((SUM(SALE_AMT_SILJUK) + SUM(SALE_AMT_HALINS02) )  * ( NVL(#{AS_SILJUKYUL_IN},100) * 0.01 ) ,0)  AS SALE_RESULT_AMT,  
+	          AVG(SALE_PERCENT) AS SALE_PERCENT,
+	          SUM(IN_AMT) AS IN_SALE_GOAL_AMT,  
+	          ROUND(SUM(IN_AMT_SILJUK) * ( NVL(#{AS_SILJUKYUL_IN_SU},100) * 0.01), 0) AS IN_SALE_RESULT_AMT,
+	          SUM(IN_PERCENT) AS IN_PERCENT   
+	     FROM SALE.SALEPART_BATCH2
+	    WHERE SUBSTR(DATE_TIME,1,4) = #{year} 
+	      AND PART_CD = #{partCd}
+	    GROUP BY SUBSTR(DATE_TIME,5,2) 
+	    ORDER BY MONTH 
+	</select>
+	
+	<select id="getTeamResultYear" parameterType="hashmap" resultType="com.hanaph.saleon.main.vo.EmpDashboardVO">
+		SELECT 
+			  SUBSTR(DATE_TIME,5,2)  AS MONTH,
+	          SUM(SALE_AMT) AS SALE_GOAL_AMT,  
+	          ROUND((SUM(SALE_AMT_SILJUK) + SUM(SALE_AMT_HALINS02) )  * ( NVL(#{AS_SILJUKYUL_IN},100) * 0.01 ) ,0)  AS SALE_RESULT_AMT,  
+	          AVG(SALE_PERCENT) AS SALE_PERCENT,
+	          SUM(IN_AMT) AS IN_SALE_GOAL_AMT,  
+	          ROUND(SUM(IN_AMT_SILJUK) * ( NVL(#{AS_SILJUKYUL_IN_SU},100) * 0.01), 0) AS IN_SALE_RESULT_AMT,
+	          SUM(IN_PERCENT) AS IN_PERCENT   
+	     FROM SALE.SALEPART_BATCH2
+	    WHERE SUBSTR(DATE_TIME,1,4) = #{year}  
+	      AND PART_CD = #{partCd}
+	      AND TEAM_CD = #{teamCd}
+	    GROUP BY SUBSTR(DATE_TIME,5,2) 
+	    ORDER BY MONTH 
+	</select>
+	
+	<select id="getCompanyResultYear" parameterType="hashmap" resultType="com.hanaph.saleon.main.vo.EmpDashboardVO">
+		SELECT 	
+				SUBSTR(DATE_TIME,5,2) AS MONTH,
+	          SUM(SALE_AMT) AS SALE_GOAL_AMT,  
+	          ROUND((SUM(SALE_AMT_SILJUK) + SUM(SALE_AMT_HALINS02) )  * ( NVL(#{AS_SILJUKYUL_IN},100) * 0.01 ), 0)  AS SALE_RESULT_AMT,  
+	          AVG(SALE_PERCENT) AS SALE_PERCENT,
+	          SUM(IN_AMT) AS IN_SALE_GOAL_AMT,  
+	          ROUND(SUM(IN_AMT_SILJUK) * ( NVL(#{AS_SILJUKYUL_IN_SU},100) * 0.01),0) AS IN_SALE_RESULT_AMT,
+	          SUM(IN_PERCENT) AS IN_PERCENT   
+	     FROM SALE.SALEPART_BATCH2
+	    WHERE SUBSTR(DATE_TIME,1,4) = #{year} 
+	      AND PART_CD not in ('09','11','12','13')
+	    GROUP BY SUBSTR(DATE_TIME,5,2)
+	    ORDER BY MONTH
+	</select>
+	
+	<select id="getCompanyResultMonthByPart" parameterType="hashmap" resultType="com.hanaph.saleon.main.vo.EmpDashboardVO">
+		SELECT PART_CD PART_GB,
+	          (SELECT NVL(CODE1_NM, '미지정' ) FROM SALE.SALE0001 WHERE code_gb = '0013' AND PART_CD = CODE1 ) AS PART_NM,
+	          SUM(SALE_AMT) AS SALE_GOAL_AMT,  
+	          ROUND((SUM(SALE_AMT_SILJUK) + SUM(SALE_AMT_HALINS02) )  * ( NVL(#{AS_SILJUKYUL_IN},100) * 0.01 ) ,0) AS SALE_RESULT_AMT,  
+	          AVG(SALE_PERCENT) AS SALE_PERCENT,
+	          SUM(IN_AMT) AS IN_SALE_GOAL_AMT,  
+	          ROUND(SUM(IN_AMT_SILJUK) * ( NVL(#{AS_SILJUKYUL_IN_SU},100) * 0.01) ,0)AS IN_SALE_RESULT_AMT,
+	          SUM(IN_PERCENT) AS IN_PERCENT   
+	     FROM SALE.SALEPART_BATCH2
+	    WHERE SUBSTR(DATE_TIME,1,6) = #{year}  
+	      AND PART_CD not in ('09','11','12','13')
+	    GROUP BY PART_CD
+	    ORDER BY PART_CD 
+	</select>
+</mapper>
+	

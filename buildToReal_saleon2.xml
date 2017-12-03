@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="hana_online real2" default="upload" basedir=".">
+	
+	<property environment="env" />
+	
+	<!-- 실제 소스 -->
+	<property name="source" value="D:\hana_AtoJ\workspace\hana_online\WebContent" />
+	
+	<!-- 변수 목록 -->
+	<property name="server" value="58.229.234.3" />
+	<property name="port" value="21" />
+	<property name="userid" value="hanasale" />
+	<property name="pw" value="tkfkdgkqslek!)@(" />	
+	<property name="remotedir" value="webapps/sale_on" />
+	
+	
+	<!-- 파일 업로드 -->
+	<target name="upload">
+		
+		<echo message="서버에 디렉토리를 생성합니다."/>
+		<ftp server="${server}" remotedir="${remotedir}" userid="${userid}" password="${pw}" port="${port}" action="mkdir"/>
+		
+		<!--
+		<echo message="서버의 파일을 삭제 합니다."/> 
+		<ftp server="${server}" port="${port}" remotedir="${remotedir}" userid="${userid}" password="${pw}" action="del" >
+			<fileset>
+                 <include name="**" />
+             </fileset>
+		</ftp>
+		
+		<echo message="서버의 디렉토리를 삭제 합니다."/>
+		<ftp server="${server}" port="${port}" remotedir="${remotedir}" userid="${userid}" password="${pw}" action="rmdir" >
+			<fileset>
+                 <include name="**" />
+             </fileset>
+		</ftp>
+		-->
+		
+		<echo message="서버에 파일을 업로드 합니다."/>
+		<echo message="ftp : ${server}/${userid}" />
+		<ftp server="${server}" remotedir="${remotedir}" userid="${userid}" password="${pw}" port="${port}" Passive="yes" depends="yes" timediffauto="yes">
+			<fileset dir="${source}">
+				<include name="**/*" />
+			</fileset>
+		</ftp>
+			
+	</target>
+	    	
+</project>

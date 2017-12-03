@@ -1,8 +1,7 @@
 /**
-  * Hana Project
-  * Copyright 2014 iRush Co.,
-  *
-  */
+ * Hana Project
+ * Copyright 2014 iRush Co.,
+ */
 package com.hanaph.saleon.common.utils;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -17,42 +16,51 @@ import java.util.Map;
  * <pre>
  * Class Name : DBInfoManageUtil.java
  * 설명 : 오라클 유저 정보 조회 class
- * 
+ *
  * Modification Information
  *    수정일      수정자              수정 내용
  *  ------------ -------------- --------------------------------
- *  2015. 1. 16.      slamwin          
+ *  2015. 1. 16.      slamwin
  * </pre>
- * 
- * @version : 
- * @author  : slamwin(@irush.co.kr)
- * @since   : 2015. 1. 16.
+ *
+ * @author : slamwin(@irush.co.kr)
+ * @version :
+ * @since : 2015. 1. 16.
  */
 public class DBInfoManageUtil {
-    
-	/** Reload JDBC Util */
-	private ReloadJDBCUtil reloadJDBCUtil;
-	
-    /** The LOG. */
+
+    /**
+     * Reload JDBC Util
+     */
+    private ReloadJDBCUtil reloadJDBCUtil;
+
+    /**
+     * The LOG.
+     */
     private static org.apache.log4j.Logger log = org.apache.log4j.Logger.getLogger(DBInfoManageUtil.class);
-    
-    /** The Constant SERVICELIST. */
+
+    /**
+     * The Constant SERVICELIST.
+     */
     private static final List<Map<String, Object>> DBINFOLIST = new ArrayList<Map<String, Object>>();
-    
-    /** The database.properties file path */
+
+    /**
+     * The database.properties file path
+     */
     private static final String PROP_FILE_PATH = "/com/hanaph/saleon/properties/database_#server.type#.properties";
-    
+
 
     /**
      * 생성자.
      * 오라클 유저 정보를 조회한 후 프로퍼티에 정의된 applicaton 유저의 정보로 dataSource값을 적용시킨다. (동적 로딩)
-     * @param loginUserDAO	DB조회를 하기 위한 DAO
-     * @param reloadJDBCUtil1	DataSource정보를 동적로딩하기 위한 클래스
+     *
+     * @param loginUserDAO    DB조회를 하기 위한 DAO
+     * @param reloadJDBCUtil1 DataSource정보를 동적로딩하기 위한 클래스
      */
-    private DBInfoManageUtil(ReloadJDBCUtil reloadJDBCUtil1){
+    private DBInfoManageUtil(ReloadJDBCUtil reloadJDBCUtil1) {
         log.debug("///////////////////////////////DBInfoManageUtil init/////////////////////////////////////");
-        
-        log.debug("///////////////////////////////Before DB Select : DBINFOLIST.size() "+DBINFOLIST.size()+"/////////////////////////////////////");
+
+        log.debug("///////////////////////////////Before DB Select : DBINFOLIST.size() " + DBINFOLIST.size() + "/////////////////////////////////////");
         
         /*
          *  set reloadJDBCUtil
@@ -67,60 +75,62 @@ public class DBInfoManageUtil {
         /*
          * 오라클 유저 리스트를 조회 전용 dataSource객체를 생성한 후JdbcTemplate을 이용해서 오라클 유저 정보를 조회 
          */
-        DBINFOLIST.addAll(this.getOracleUserList((SimpleDriverDataSource)createDataSource(propsMap)));
-        
-        log.debug("///////////////////////////////after DB Select : DBINFOLIST.size() "+DBINFOLIST.size()+"/////////////////////////////////////");
+        DBINFOLIST.addAll(this.getOracleUserList((SimpleDriverDataSource) createDataSource(propsMap)));
+
+        log.debug("///////////////////////////////after DB Select : DBINFOLIST.size() " + DBINFOLIST.size() + "/////////////////////////////////////");
         
         /*
          *  조회 정보가 있을 경우 루프를 돌면서 조회된 DB유저의 계정과 프로퍼티에 정의된 온라인몰 전용 유저의 계정을 비교해 같은 경우만 data source 동적 로딩을 진행 
          */
-        if(DBINFOLIST != null && !DBINFOLIST.isEmpty()){
-        	for(Map<String, Object> rowMap : DBINFOLIST){
-        		if(rowMap.get("USERNAME") != null && propsMap.get("jdbc.app.username") != null
-        				&& propsMap.get("jdbc.app.dataSourceName") != null
-        				&& rowMap.get("PASSWORD") != null
-        				&& ((String)rowMap.get("USERNAME")).equalsIgnoreCase(propsMap.get("jdbc.app.username"))){
-        			reloadJDBCUtil.reloadDataSourceUserInfo(propsMap.get("jdbc.app.dataSourceName"), 
-        					propsMap.get("jdbc.driverClass"), propsMap.get("jdbc.url"),
-        					((String)rowMap.get("USERNAME")).toLowerCase(), ((String)rowMap.get("PASSWORD")).toLowerCase(), PROP_FILE_PATH);
-        			break;
-        		}
-        	}
+        if (DBINFOLIST != null && !DBINFOLIST.isEmpty()) {
+            for (Map<String, Object> rowMap : DBINFOLIST) {
+                if (rowMap.get("USERNAME") != null && propsMap.get("jdbc.app.username") != null
+                        && propsMap.get("jdbc.app.dataSourceName") != null
+                        && rowMap.get("PASSWORD") != null
+                        && ((String) rowMap.get("USERNAME")).equalsIgnoreCase(propsMap.get("jdbc.app.username"))) {
+                    reloadJDBCUtil.reloadDataSourceUserInfo(propsMap.get("jdbc.app.dataSourceName"),
+                            propsMap.get("jdbc.driverClass"), propsMap.get("jdbc.url"),
+                            ((String) rowMap.get("USERNAME")).toLowerCase(), ((String) rowMap.get("PASSWORD")).toLowerCase(), PROP_FILE_PATH);
+                    break;
+                }
+            }
         }
-        
+
         log.debug("///////////////////////////////DBInfoManageUtil end/////////////////////////////////////");
     }
-    
+
     /**
      * <pre>
      * 1. 개요     : DataSource 생성
      * 2. 처리내용 :	SimpleDriverDataSource 클래스를 이용해 DataSource 생성
      * </pre>
+     *
+     * @param propsMap DB정보를 담고 있는 Map<String, String>
+     * @return DataSource
      * @Method Name : createDataSource
-     * @param propsMap	DB정보를 담고 있는 Map<String, String>
-     * @return	DataSource
-     */		
-    private DataSource createDataSource(Map<String, String> propsMap){
-    	SimpleDriverDataSource dataSource = new SimpleDriverDataSource();
-    	dataSource.setDriver(new oracle.jdbc.driver.OracleDriver());
+     */
+    private DataSource createDataSource(Map<String, String> propsMap) {
+        SimpleDriverDataSource dataSource = new SimpleDriverDataSource();
+        dataSource.setDriver(new oracle.jdbc.driver.OracleDriver());
         dataSource.setUrl(propsMap.get("jdbc.url"));
         dataSource.setUsername(propsMap.get("jdbc.master.username"));
         dataSource.setPassword(propsMap.get("jdbc.master.password"));
         return dataSource;
     }
-	
-	/**
-	 * <pre>
-	 * 1. 개요     : JdbcTemplate을 이용해서 DB 조회
-	 * 2. 처리내용 :	JdbcTemplate을 이용해서 오라클 유저 정보를 조회
-	 * </pre>
-	 * @Method Name : getOracleUserList
-	 * @param dataSource	DataSource
-	 * @return	오라클 유저 정보 리스트
-	 */		
-	private List<Map<String, Object>> getOracleUserList(DataSource dataSource) {
-		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-		return  (List<Map<String, Object>>)jdbcTemplate.queryForList("SELECT ORAUSER USERNAME, UTL_I18N.RAW_TO_CHAR(ORAUSER_PASS) PASSWORD, USE_YN USEYN FROM TB_ORAUSER_INFO");
-	}
-    
+
+    /**
+     * <pre>
+     * 1. 개요     : JdbcTemplate을 이용해서 DB 조회
+     * 2. 처리내용 :	JdbcTemplate을 이용해서 오라클 유저 정보를 조회
+     * </pre>
+     *
+     * @param dataSource DataSource
+     * @return 오라클 유저 정보 리스트
+     * @Method Name : getOracleUserList
+     */
+    private List<Map<String, Object>> getOracleUserList(DataSource dataSource) {
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        return (List<Map<String, Object>>) jdbcTemplate.queryForList("SELECT ORAUSER USERNAME, UTL_I18N.RAW_TO_CHAR(ORAUSER_PASS) PASSWORD, USE_YN USEYN FROM TB_ORAUSER_INFO");
+    }
+
 }

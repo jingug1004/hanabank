@@ -1,0 +1,574 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 
+  * @파일명 : business_customerInfo.xml
+  * @메뉴명 : 고객등록
+  * @최초작성일 : 2014/12/17
+  * @author : 윤범진          
+  * @수정내역 :
+ -->
+<mapper namespace="customerInfo"> 
+	
+	<select id="getCustomerInfoGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+	
+		<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow} + 1) PAGE
+	        		FROM (
+    	</if>
+		<![CDATA[
+							SELECT A.CUST_ID CUST_ID, 
+							       A.CUST_NM,
+							       A.CUST_ID CUST_ID2,
+							       A.SAWON_ID,
+							       B.SAWON_NM
+							  FROM SALE.SALE0003 A,
+							       SALE.SALE0007 B
+							 WHERE A.CUST_ID LIKE '%'||#{as_cust_id}||'%'
+								   AND A.USE_YN   LIKE #{as_use_yn}
+								   AND A.SAWON_ID = B.SAWON_ID
+								   AND A.SAWON_ID IN (SELECT SAWON_ID 
+								                        FROM SALE.SALE0007 
+								                       WHERE (CASE WHEN 'P' = F_TEAMWON_GB('${as_emp_cd}') THEN SAWON_ID ELSE DEPT_CD END) 
+								                           = (CASE WHEN 'P' = F_TEAMWON_GB('${as_emp_cd}') THEN '${as_emp_cd}' 
+								                                   WHEN 'D' = F_TEAMWON_GB('${as_emp_cd}') THEN '${as_dept_cd}' ELSE DEPT_CD END))
+		]]>
+		 
+					<if test="sidx != ''">
+						ORDER BY ${sidx} ${sord}
+					</if>
+		
+				<if test="page != null">
+					) T0
+				)
+				WHERE PAGE = #{page}
+				</if>
+	</select>
+	
+	<select id="getCustomerInfoGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+	<![CDATA[
+		SELECT COUNT(*) total_cnt
+		  FROM (SELECT A.CUST_ID, 
+				       A.CUST_NM, 
+				       A.SAWON_ID,
+				       B.SAWON_NM
+				  FROM SALE.SALE0003 A,
+				       SALE.SALE0007 B
+				 WHERE A.CUST_ID LIKE '%'||#{as_cust_id}||'%'
+				   AND A.USE_YN   LIKE #{as_use_yn}
+				   AND A.SAWON_ID = B.SAWON_ID
+				   AND A.SAWON_ID IN (SELECT SAWON_ID 
+				                        FROM SALE.SALE0007 
+				                       WHERE (CASE WHEN 'P' = F_TEAMWON_GB('${as_emp_cd}') THEN SAWON_ID ELSE DEPT_CD END) 
+				                           = (CASE WHEN 'P' = F_TEAMWON_GB('${as_emp_cd}') THEN '${as_emp_cd}' 
+				                                   WHEN 'D' = F_TEAMWON_GB('${as_emp_cd}') THEN '${as_dept_cd}' ELSE DEPT_CD END)))
+	]]>
+	</select>
+	
+	<select id="getClientGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+	
+		<if test="page != null">
+			SELECT *
+				FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+	        		FROM (
+    	</if>
+		<![CDATA[
+							SELECT CUST_ID, CUSTOMER_ID, CUSTOMER_NM, SEX, MARRY_YN,
+								   NVL2(BIRTH_DAY, SUBSTR(BIRTH_DAY, 1, 4)||'-'||SUBSTR(BIRTH_DAY, 5, 2)||'-'||SUBSTR(BIRTH_DAY, 7, 2), NULL) BIRTH_DAY,
+								   NVL2(ACT_BIRTH_DAY, SUBSTR(ACT_BIRTH_DAY, 1, 4)||'-'||SUBSTR(ACT_BIRTH_DAY, 5, 2)||'-'||SUBSTR(ACT_BIRTH_DAY, 7, 2), NULL) ACT_BIRTH_DAY,
+								   NVL2(MARRY_DAY ,SUBSTR(MARRY_DAY, 1, 4)||'-'||SUBSTR(MARRY_DAY, 5, 2)||'-'||SUBSTR(MARRY_DAY, 7, 2), NULL) MARRY_DAY,
+								   CHILD_KIND, DISPOSITION, RELIGION,
+								   HIGHSCHOOL, UNIVERSITY, ZIP, ADDRESS1, ADDRESS2, TEL, MOBILE, 
+							       FAX, EMAIL, CAR_NO, CAR_COLOR, FOREIGN_STUDY_YN, RANK, 
+							       LESSON, HOSPITAL, MAJOR, MAIN_BUYING, HUMAN_REL, HOBBY, 
+							       TABOO_LIST, GITA
+							  FROM SALE.CRM_MASTER
+							 WHERE CUST_ID = #{as_cust_id,jdbcType=VARCHAR}
+		]]>
+		 
+					<if test="sidx != ''">
+						ORDER BY ${sidx} ${sord}
+					</if>
+		
+				<if test="page != null">
+					) T0
+				)
+				WHERE PAGE = #{page,jdbcType=INTEGER}
+				</if>
+	</select>
+	
+	<select id="getClientGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+	<![CDATA[
+		SELECT COUNT(*) total_cnt
+		  FROM (SELECT CUST_ID, CUSTOMER_ID, CUSTOMER_NM, SEX, TO_CHAR(TO_DATE(BIRTH_DAY), 'YYYY-MM-DD') BIRTH_DAY,
+					   TO_CHAR(TO_DATE(ACT_BIRTH_DAY), 'YYYY-MM-DD') ACT_BIRTH_DAY,
+					   MARRY_YN, TO_CHAR(TO_DATE(MARRY_DAY), 'YYYY-MM-DD') MARRY_DAY, CHILD_KIND, DISPOSITION, RELIGION,
+					   HIGHSCHOOL, UNIVERSITY, ZIP, ADDRESS1, ADDRESS2, TEL, MOBILE, 
+				       FAX, EMAIL, CAR_NO, CAR_COLOR, FOREIGN_STUDY_YN, RANK, 
+				       LESSON, HOSPITAL, MAJOR, MAIN_BUYING, HUMAN_REL, HOBBY, 
+				       TABOO_LIST, GITA
+				  FROM SALE.CRM_MASTER
+				 WHERE CUST_ID = #{as_cust_id,jdbcType=VARCHAR})
+	]]>
+	</select>
+	
+	<!-- 등록번호 생성 프로시저 -->
+	<parameterMap type="hashmap" id="regNo">
+		<parameter property="tableType" jdbcType="VARCHAR" javaType="string" mode="IN" />
+		<parameter property="cust_id" jdbcType="VARCHAR" javaType="string" mode="IN" />
+		<parameter property="customer_id" jdbcType="VARCHAR" javaType="string" mode="IN" />
+		<parameter property="max" jdbcType="INTEGER" javaType="string" mode="OUT" />
+	</parameterMap>
+	<select id="getProcedureCall" statementType="CALLABLE" parameterMap="regNo">
+		{call SALE.SP_SYS100C_MAX_VALUE( ?, ?, ?, null, null, null,?)}
+	</select>
+	
+	<update id="updateCustomerInfo" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		UPDATE SALE.CRM_MASTER
+		   SET CUSTOMER_NM      = #{customer_nm,jdbcType=VARCHAR},
+		       SEX              = #{sex,jdbcType=VARCHAR},
+		       BIRTH_DAY        = #{birth_day,jdbcType=VARCHAR},
+		       ACT_BIRTH_DAY    = #{act_birth_day,jdbcType=VARCHAR},
+		       MARRY_YN         = #{marry_yn,jdbcType=VARCHAR},
+		       MARRY_DAY        = #{marry_day,jdbcType=VARCHAR},
+		       CHILD_KIND       = #{child_kind,jdbcType=VARCHAR},
+		       DISPOSITION      = #{disposition,jdbcType=VARCHAR},
+		       RELIGION         = #{religion,jdbcType=VARCHAR},
+		       HIGHSCHOOL       = #{highschool,jdbcType=VARCHAR},
+		       UNIVERSITY       = #{university,jdbcType=VARCHAR},
+		       ZIP              = #{zip,jdbcType=VARCHAR},
+		       ADDRESS1         = #{address1,jdbcType=VARCHAR},
+		       ADDRESS2         = #{address2,jdbcType=VARCHAR},
+		       TEL              = #{tel,jdbcType=VARCHAR},
+		       MOBILE           = #{mobile,jdbcType=VARCHAR},
+		       FAX              = #{fax,jdbcType=VARCHAR},
+		       EMAIL            = #{email,jdbcType=VARCHAR},
+		       CAR_NO           = #{car_no,jdbcType=VARCHAR},
+		       CAR_COLOR        = #{car_color,jdbcType=VARCHAR},
+		       FOREIGN_STUDY_YN = #{foreign_study_yn,jdbcType=VARCHAR},
+		       RANK             = #{rank,jdbcType=VARCHAR},
+		       LESSON           = #{lesson,jdbcType=VARCHAR},
+		       HOSPITAL         = #{hospital,jdbcType=VARCHAR},
+		       MAJOR            = #{major,jdbcType=VARCHAR},
+		       MAIN_BUYING      = #{main_buying,jdbcType=VARCHAR},
+		       HUMAN_REL        = #{human_rel,jdbcType=VARCHAR},
+		       HOBBY            = #{hobby,jdbcType=VARCHAR},
+		       TABOO_LIST       = #{taboo_list,jdbcType=VARCHAR},
+		       GITA             = #{gita,jdbcType=VARCHAR}
+		 WHERE CUST_ID          = #{cust_id,jdbcType=VARCHAR}
+		   AND CUSTOMER_ID      = #{customer_id,jdbcType=VARCHAR}
+	</update>
+	
+	<insert id="insertCustomerInfo" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		INSERT INTO SALE.CRM_MASTER (
+			   CUST_ID, CUSTOMER_ID, CUSTOMER_NM, SEX, BIRTH_DAY, ACT_BIRTH_DAY, 
+			   MARRY_YN, MARRY_DAY, CHILD_KIND, DISPOSITION, RELIGION, HIGHSCHOOL, 
+			   UNIVERSITY, ZIP, ADDRESS1, ADDRESS2, TEL, MOBILE, 
+			   FAX, EMAIL, CAR_NO, CAR_COLOR, FOREIGN_STUDY_YN, RANK, 
+			   LESSON, HOSPITAL, MAJOR, MAIN_BUYING, HUMAN_REL, HOBBY, 
+			   TABOO_LIST, GITA) 
+			VALUES (#{cust_id,jdbcType=VARCHAR}, #{customer_id,jdbcType=VARCHAR}, #{customer_nm,jdbcType=VARCHAR},
+				    #{sex,jdbcType=VARCHAR}, #{birth_day,jdbcType=VARCHAR}, #{act_birth_day,jdbcType=VARCHAR},
+				    #{marry_yn,jdbcType=VARCHAR}, #{marry_day,jdbcType=VARCHAR}, #{child_kind,jdbcType=VARCHAR},
+				    #{disposition,jdbcType=VARCHAR}, #{religion,jdbcType=VARCHAR}, #{highschool,jdbcType=VARCHAR},
+				    #{university,jdbcType=VARCHAR}, #{zip,jdbcType=VARCHAR}, #{address1,jdbcType=VARCHAR},
+				    #{address2,jdbcType=VARCHAR}, #{tel,jdbcType=VARCHAR}, #{mobile,jdbcType=VARCHAR},
+				    #{fax,jdbcType=VARCHAR}, #{email,jdbcType=VARCHAR}, #{car_no,jdbcType=VARCHAR},
+				    #{car_color,jdbcType=VARCHAR}, #{foreign_study_yn,jdbcType=VARCHAR}, #{rank,jdbcType=VARCHAR},
+				    #{lesson,jdbcType=VARCHAR}, #{hospital,jdbcType=VARCHAR}, #{major,jdbcType=VARCHAR},
+				    #{main_buying,jdbcType=VARCHAR}, #{human_rel,jdbcType=VARCHAR}, #{hobby,jdbcType=VARCHAR},
+				    #{taboo_list,jdbcType=VARCHAR}, #{gita,jdbcType=VARCHAR})
+	</insert>
+	
+	<delete id="deleteCustomerInfo" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		DELETE FROM SALE.CRM_MASTER WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR} AND CUSTOMER_ID = #{customer_id,jdbcType=VARCHAR}
+	</delete>
+	
+	<select id="getCustomerDetail" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+	<![CDATA[
+		SELECT CUST_ID,
+		       CUST_NM, 
+		       CUST_NM1, 
+		       VOU_NO, 
+		       PRESIDENT,
+		       BUPIN_NO,
+		       UPTAE,
+		       JONGMOK, 
+		       ZIP, 
+		       ADDR1,
+		       ADDR2,
+		       TEL,
+		       HP,
+		       FAX, 
+		       EMAIL,
+		       (SELECT CODE1_NM FROM SALE.SALE0001 WHERE CODE_GB = '0020' AND CODE1 = CUST_GB1) CUST_GB1,
+		       ROOM_CNT,
+		       TO_CHAR(TO_DATE(OPEN_DATE), 'YYYY-MM-DD') OPEN_DATE,
+		       TO_CHAR(START_YMD, 'YYYY-MM-DD') START_YMD,
+		       TO_CHAR(USE_YMD, 'YYYY-MM-DD') USE_YMD, 
+		       TO_CHAR(TO_DATE(SUBMIT_DATE), 'YYYY-MM-DD') SUBMIT_DATE,
+		       BEDNO 
+		  FROM SALE.SALE0003
+		 WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR}
+	]]>
+	</select>
+	
+	<select id="getCustomerDetailEtcGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		<if test="page != null">
+				SELECT *
+					FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+		        		FROM (
+	    	</if>
+			<![CDATA[
+								SELECT CUST_ID, 
+								       SEQ, 
+								       GITA
+								  FROM SALE.CRM_CUSTGITA
+								 WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR}
+			]]>
+						<if test="sidx != ''">
+							ORDER BY ${sidx} ${sord}
+						</if>
+			
+					<if test="page != null">
+						) T0
+					)
+					WHERE PAGE = #{page,jdbcType=INTEGER}
+		</if>
+	</select>
+	
+	<select id="getCustomerDetailEtcGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+	<![CDATA[
+		SELECT COUNT(*) total_cnt 
+		  FROM SALE.CRM_CUSTGITA
+		 WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR}
+	]]>
+	</select>
+	
+	<update id="updateCustomerDetail" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		UPDATE SALE.SALE0003
+		   SET TEL			= #{tel,jdbcType=VARCHAR},
+		       HP			= #{hp,jdbcType=VARCHAR},
+		       OPEN_DATE	= #{open_date,jdbcType=VARCHAR},
+		       FAX			= #{fax,jdbcType=VARCHAR},
+		       ROOM_CNT		= #{room_cnt,jdbcType=VARCHAR},
+		       SUBMIT_DATE	= #{submit_date,jdbcType=VARCHAR},
+		       BEDNO		= #{bedno,jdbcType=VARCHAR},
+		       EMAIL		= #{email,jdbcType=VARCHAR}
+		 WHERE CUST_ID      = #{cust_id,jdbcType=VARCHAR}
+	</update>
+	
+	<insert id="insertCustomerDetailEtc" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		INSERT INTO SALE.CRM_CUSTGITA (CUST_ID, SEQ, GITA) VALUES (#{cust_id,jdbcType=VARCHAR}, #{seq,jdbcType=VARCHAR}, #{gita,jdbcType=VARCHAR})
+	</insert>
+	
+	<update id="updateCustomerDetailEtc" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		UPDATE SALE.CRM_CUSTGITA
+		   SET GITA    = #{gita,jdbcType=VARCHAR}
+		 WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR}
+		   AND SEQ     = #{seq,jdbcType=VARCHAR}
+	</update>
+	
+	<delete id="deleteCustomerDetailEtc" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		DELETE FROM SALE.CRM_CUSTGITA WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR} AND SEQ = #{seq,jdbcType=VARCHAR}
+	</delete>
+	
+	<select id="getInstituteGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		<if test="page != null">
+				SELECT *
+					FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+		        		FROM (
+	    	</if>
+			<![CDATA[
+								SELECT A.CUST_ID, 
+								       A.CUSTOMER_ID, 
+								       A.SEQ, 
+								       A.HAKHEO_NM, 
+								       A.DATEF, 
+								       A.DATET, 
+								       A.JIWI, 
+								       A.GWANSIMDO, 
+								       A.GITA
+								  FROM SALE.CRM_HAKHEO A
+								 WHERE A.CUST_ID = #{as_cust_id,jdbcType=VARCHAR}
+								   AND A.CUSTOMER_ID = #{as_customer_id,jdbcType=VARCHAR}
+			]]>
+						<if test="sidx != ''">
+							ORDER BY ${sidx} ${sord}
+						</if>
+			
+					<if test="page != null">
+						) T0
+					)
+					WHERE PAGE = #{page,jdbcType=INTEGER}
+		</if>
+	</select>
+	
+	<select id="getInstituteGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+	<![CDATA[
+		SELECT COUNT(*) total_cnt 
+		  FROM SALE.CRM_HAKHEO A
+		 WHERE A.CUST_ID = #{as_cust_id,jdbcType=VARCHAR}
+		   AND A.CUSTOMER_ID = #{as_customer_id,jdbcType=VARCHAR}
+	]]>
+	</select>
+	
+	<select id="getFamilyRelationshipsGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		<if test="page != null">
+				SELECT *
+					FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+		        		FROM (
+	    	</if>
+			<![CDATA[
+								SELECT A.CUST_ID, 
+								       A.CUSTOMER_ID, 
+								       A.SEQ, 
+								       A.RELATION, 
+								       A.NAME, 
+								       A.BIRTHDAY, 
+								       A.JOB, 
+								       A.GITA
+								  FROM SALE.CRM_FAMILY A
+								 WHERE A.CUST_ID = #{as_cust_id,jdbcType=VARCHAR}
+								   AND A.CUSTOMER_ID = #{as_customer_id,jdbcType=VARCHAR}
+			]]>
+						<if test="sidx != ''">
+							ORDER BY ${sidx} ${sord}
+						</if>
+			
+					<if test="page != null">
+						) T0
+					)
+					WHERE PAGE = #{page,jdbcType=INTEGER}
+		</if>
+	</select>
+	
+	<select id="getFamilyRelationshipsGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+	<![CDATA[
+		SELECT COUNT(*) total_cnt 
+		  FROM SALE.CRM_FAMILY A
+		 WHERE A.CUST_ID = #{as_cust_id,jdbcType=VARCHAR}
+		   AND A.CUSTOMER_ID = #{as_customer_id,jdbcType=VARCHAR}
+	]]>
+	</select>
+	
+	<select id="getAnniversaryGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		<if test="page != null">
+				SELECT *
+					FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+		        		FROM (
+	    	</if>
+			<![CDATA[
+								SELECT A.CUST_ID, 
+								       A.CUSTOMER_ID, 
+								       A.SEQ, 
+								       A.SDATE, 
+								       A.KIND, 
+								       A.BIGO
+								  FROM SALE.CRM_SPECIALDAY A
+								 WHERE A.CUST_ID = #{as_cust_id,jdbcType=VARCHAR}
+								   AND A.CUSTOMER_ID = #{as_customer_id,jdbcType=VARCHAR}
+			]]>
+						<if test="sidx != ''">
+							ORDER BY ${sidx} ${sord}
+						</if>
+			
+					<if test="page != null">
+						) T0
+					)
+					WHERE PAGE = #{page,jdbcType=INTEGER}
+		</if>
+	</select>
+	
+	<select id="getAnniversaryGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+	<![CDATA[
+		SELECT COUNT(*) total_cnt 
+		  FROM SALE.CRM_SPECIALDAY A
+		 WHERE A.CUST_ID = #{as_cust_id,jdbcType=VARCHAR}
+		   AND A.CUSTOMER_ID = #{as_customer_id,jdbcType=VARCHAR}
+	]]>
+	</select>
+	
+	<select id="getFriendRelationshipsGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		<if test="page != null">
+				SELECT *
+					FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+		        		FROM (
+	    	</if>
+			<![CDATA[
+								SELECT A.CUST_ID, 
+								       A.CUSTOMER_ID, 
+								       A.SEQ, 
+								       A.CORP_NM, 
+								       A.NAME, 
+								       A.RELATION FRIENDSHIP, 
+								       A.LESSON, 
+								       A.GWANSIMDO
+								  FROM SALE.CRM_FRIEND A
+								 WHERE A.CUST_ID = #{as_cust_id,jdbcType=VARCHAR}
+								   AND A.CUSTOMER_ID = #{as_customer_id,jdbcType=VARCHAR}
+			]]>
+						<if test="sidx != ''">
+							ORDER BY ${sidx} ${sord}
+						</if>
+			
+					<if test="page != null">
+						) T0
+					)
+					WHERE PAGE = #{page,jdbcType=INTEGER}
+		</if>
+	</select>
+	
+	<select id="getFriendRelationshipsGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+	<![CDATA[
+		SELECT COUNT(*) total_cnt 
+		  FROM SALE.CRM_FRIEND A
+		 WHERE A.CUST_ID = #{as_cust_id,jdbcType=VARCHAR}
+		   AND A.CUSTOMER_ID = #{as_customer_id,jdbcType=VARCHAR}
+	]]>
+	</select>
+	
+	<select id="getOtherDetailGridList" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		<if test="page != null">
+				SELECT *
+					FROM (SELECT T0.*, FLOOR((ROWNUM - 1) / #{perPageRow,jdbcType=INTEGER} + 1) PAGE
+		        		FROM (
+	    	</if>
+			<![CDATA[
+								SELECT A.CUST_ID, 
+								       A.CUSTOMER_ID, 
+								       A.SEQ, 
+								       A.GITA
+								  FROM SALE.CRM_CUSTMGITA A
+								 WHERE A.CUST_ID = #{as_cust_id,jdbcType=VARCHAR}
+								   AND A.CUSTOMER_ID = #{as_customer_id,jdbcType=VARCHAR}
+			]]>
+						<if test="sidx != ''">
+							ORDER BY ${sidx} ${sord}
+						</if>
+			
+					<if test="page != null">
+						) T0
+					)
+					WHERE PAGE = #{page,jdbcType=INTEGER}
+		</if>
+	</select>
+	
+	<select id="getOtherDetailGridTotalCount" parameterType="hashmap" resultType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+	<![CDATA[
+		SELECT COUNT(*) total_cnt 
+		  FROM SALE.CRM_CUSTMGITA A
+		 WHERE A.CUST_ID = #{as_cust_id,jdbcType=VARCHAR}
+		   AND A.CUSTOMER_ID = #{as_customer_id,jdbcType=VARCHAR}
+	]]>
+	</select>
+	
+	<insert id="insertOtherDetail" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		INSERT INTO SALE.CRM_CUSTMGITA (CUST_ID, CUSTOMER_ID, SEQ,GITA) 
+		VALUES (#{cust_id,jdbcType=VARCHAR}, #{customer_id,jdbcType=VARCHAR}, #{seq,jdbcType=VARCHAR}, #{gita,jdbcType=VARCHAR})
+	</insert>
+	
+	<update id="updateOtherDetail" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		UPDATE SALE.CRM_CUSTMGITA
+		   SET GITA    = #{gita,jdbcType=VARCHAR}
+		 WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR}
+		   AND CUSTOMER_ID = #{customer_id,jdbcType=VARCHAR}
+		   AND SEQ     = #{seq,jdbcType=VARCHAR}
+	</update>
+	
+	<insert id="insertInstitute" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		INSERT INTO SALE.CRM_HAKHEO (CUST_ID, CUSTOMER_ID, SEQ, HAKHEO_NM, DATEF, DATET, JIWI, GWANSIMDO, GITA) 
+		VALUES (#{cust_id,jdbcType=VARCHAR}, #{customer_id,jdbcType=VARCHAR}, #{seq,jdbcType=VARCHAR},
+				#{hakheo_nm,jdbcType=VARCHAR}, #{datef,jdbcType=VARCHAR}, #{datet,jdbcType=VARCHAR},
+				#{jiwi,jdbcType=VARCHAR}, #{gwansimdo,jdbcType=VARCHAR}, #{gita,jdbcType=VARCHAR})
+	</insert>
+	
+	<update id="updateInstitute" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		UPDATE SALE.CRM_HAKHEO
+		   SET HAKHEO_NM   = #{hakheo_nm,jdbcType=VARCHAR},
+		       DATEF       = #{datef,jdbcType=VARCHAR},
+		       DATET       = #{datet,jdbcType=VARCHAR},
+		       JIWI        = #{jiwi,jdbcType=VARCHAR},
+		       GWANSIMDO   = #{gwansimdo,jdbcType=VARCHAR},
+		       GITA        = #{gita,jdbcType=VARCHAR}
+		 WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR}
+		   AND CUSTOMER_ID = #{customer_id,jdbcType=VARCHAR}
+		   AND SEQ     = #{seq,jdbcType=VARCHAR}
+	</update>
+	
+	<insert id="insertFamilyRelationships" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		INSERT INTO SALE.CRM_FAMILY (CUST_ID, CUSTOMER_ID, SEQ, RELATION, NAME, BIRTHDAY, JOB, GITA) 
+		VALUES (#{cust_id,jdbcType=VARCHAR}, #{customer_id,jdbcType=VARCHAR}, #{seq,jdbcType=VARCHAR},
+				#{relation,jdbcType=VARCHAR}, #{name,jdbcType=VARCHAR}, #{birthday,jdbcType=VARCHAR},
+				#{job,jdbcType=VARCHAR}, #{gita,jdbcType=VARCHAR})
+	</insert>
+	
+	<update id="updateFamilyRelationships" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		UPDATE SALE.CRM_FAMILY
+		   SET RELATION    = #{relation,jdbcType=VARCHAR},
+		       NAME        = #{name,jdbcType=VARCHAR},
+		       BIRTHDAY    = #{birthday,jdbcType=VARCHAR},
+		       JOB         = #{job,jdbcType=VARCHAR},
+		       GITA        = #{gita,jdbcType=VARCHAR}
+		 WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR}
+		   AND CUSTOMER_ID = #{customer_id,jdbcType=VARCHAR}
+		   AND SEQ     = #{seq,jdbcType=VARCHAR}
+	</update>
+	
+	<insert id="insertAnniversary" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		INSERT INTO SALE.CRM_SPECIALDAY (CUST_ID, CUSTOMER_ID, SEQ, SDATE, KIND, BIGO) 
+		VALUES (#{cust_id,jdbcType=VARCHAR}, #{customer_id,jdbcType=VARCHAR}, #{seq,jdbcType=VARCHAR},
+				#{sdate,jdbcType=VARCHAR}, #{kind,jdbcType=VARCHAR}, #{bigo,jdbcType=VARCHAR})
+	</insert>
+	
+	<update id="updateAnniversary" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		UPDATE SALE.CRM_SPECIALDAY
+		   SET SDATE       = #{sdate,jdbcType=VARCHAR},
+		       KIND        = #{kind,jdbcType=VARCHAR},
+		       BIGO        = #{bigo,jdbcType=VARCHAR}
+		 WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR}
+		   AND CUSTOMER_ID = #{customer_id,jdbcType=VARCHAR}
+		   AND SEQ     = #{seq,jdbcType=VARCHAR}
+	</update>
+	
+	<insert id="insertFriendRelationships" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		INSERT INTO SALE.CRM_FRIEND (CUST_ID, CUSTOMER_ID, SEQ, CORP_NM, NAME, RELATION, LESSON, GWANSIMDO) 
+		VALUES (#{cust_id,jdbcType=VARCHAR}, #{customer_id,jdbcType=VARCHAR}, #{seq,jdbcType=VARCHAR},
+				#{corp_nm,jdbcType=VARCHAR}, #{name,jdbcType=VARCHAR}, #{friendship,jdbcType=VARCHAR},
+				#{lesson,jdbcType=VARCHAR}, #{gwansimdo,jdbcType=VARCHAR})
+	</insert>
+	
+	<update id="updateFriendRelationships" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		UPDATE SALE.CRM_FRIEND
+		   SET CORP_NM     = #{corp_nm,jdbcType=VARCHAR},
+		       NAME        = #{name,jdbcType=VARCHAR},
+		       RELATION    = #{friendship,jdbcType=VARCHAR},
+		       LESSON      = #{lesson,jdbcType=VARCHAR},
+		       GWANSIMDO   = #{gwansimdo,jdbcType=VARCHAR}
+		 WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR}
+		   AND CUSTOMER_ID = #{customer_id,jdbcType=VARCHAR}
+		   AND SEQ     = #{seq,jdbcType=VARCHAR}
+	</update>
+	
+	<delete id="deleteInstitute" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		DELETE FROM SALE.CRM_HAKHEO WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR} AND CUSTOMER_ID = #{customer_id,jdbcType=VARCHAR} AND SEQ = #{seq,jdbcType=VARCHAR}
+	</delete>
+	
+	<delete id="deleteFamilyRelationships" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		DELETE FROM SALE.CRM_FAMILY WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR} AND CUSTOMER_ID = #{customer_id,jdbcType=VARCHAR} AND SEQ = #{seq,jdbcType=VARCHAR}
+	</delete>
+	
+	<delete id="deleteAnniversary" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		DELETE FROM SALE.CRM_SPECIALDAY WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR} AND CUSTOMER_ID = #{customer_id,jdbcType=VARCHAR} AND SEQ = #{seq,jdbcType=VARCHAR}
+	</delete>
+	
+	<delete id="deleteFriendRelationships" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		DELETE FROM SALE.CRM_FRIEND WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR} AND CUSTOMER_ID = #{customer_id,jdbcType=VARCHAR} AND SEQ = #{seq,jdbcType=VARCHAR}
+	</delete>
+	
+	<delete id="deleteOtherDetail" parameterType="com.hanaph.saleon.business.vo.CustomerInfoVO">
+		DELETE FROM SALE.CRM_CUSTMGITA WHERE CUST_ID = #{cust_id,jdbcType=VARCHAR} AND CUSTOMER_ID = #{customer_id,jdbcType=VARCHAR} AND SEQ = #{seq,jdbcType=VARCHAR}
+	</delete>
+	
+</mapper>
+	

@@ -1,0 +1,25 @@
+@charset "utf-8";
+/*chart.js legend css*/
+.legend {
+    margin : 2px;
+    position: absolute;
+    top: 0;
+    right: 0;
+    border: 0;
+}
+
+.legend .title {
+    display: inline-block;
+    margin-bottom: 0.5em;
+    line-height: 1.2em;
+    padding: 0 0.3em;
+}
+
+.legend .color-sample {
+    display: inline-block;
+    float: left;
+    width: 1em;
+    height: 1em;
+    border: 2px solid;
+    margin-right: 0.5em;
+}
